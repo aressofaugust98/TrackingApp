@@ -4,12 +4,21 @@ import AppLayout from './components/AppLayout'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
+import TransactionsPage from './pages/TransactionsPage'
 
 function App() {
   const [view, setView] = useState('login') // 'login' | 'register' | 'app'
+  const [appSection, setAppSection] = useState('dashboard')
 
-  const handleSignedIn = () => setView('app')
-  const handleRegistered = () => setView('app')
+  const handleSignedIn = () => {
+    setAppSection('dashboard')
+    setView('app')
+  }
+
+  const handleRegistered = () => {
+    setAppSection('dashboard')
+    setView('app')
+  }
 
   if (view === 'login') {
     return (
@@ -31,9 +40,19 @@ function App() {
     )
   }
 
+  const renderSection = () => {
+    switch (appSection) {
+      case 'transactions':
+        return <TransactionsPage />
+      case 'dashboard':
+      default:
+        return <Dashboard />
+    }
+  }
+
   return (
-    <AppLayout>
-      <Dashboard />
+    <AppLayout activeLink={appSection} onNavigate={setAppSection}>
+      {renderSection()}
     </AppLayout>
   )
 }

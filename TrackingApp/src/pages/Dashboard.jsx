@@ -9,7 +9,6 @@ import {
   CartesianGrid,
 } from 'recharts';
 import BalanceCard from '../components/BalanceCard';
-import RecentTransactions from '../components/RecentTransactions';
 
 const chartData = [
   { day: 'T2', spending: 120 },
@@ -19,12 +18,6 @@ const chartData = [
   { day: 'T6', spending: 200 },
   { day: 'T7', spending: 170 },
   { day: 'CN', spending: 150 },
-];
-
-const transactions = [
-  { id: 1, title: 'Nhận lương', date: 'Hôm nay', amount: '+12.500.000₫', type: 'income' },
-  { id: 2, title: 'Siêu thị', date: 'Hôm nay', amount: '-520.000₫', type: 'expense' },
-  { id: 3, title: 'Cafe & làm việc', date: 'Hôm qua', amount: '-95.000₫', type: 'expense' },
 ];
 
 const Dashboard = () => {
@@ -37,45 +30,41 @@ const Dashboard = () => {
 
       <BalanceCard balance="25.430.000₫" income="+12.500.000₫" expense="-3.850.000₫" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Xu hướng chi tiêu 7 ngày</h3>
-            <span className="text-sm text-gray-500">(đơn vị: nghìn đồng)</span>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="spendingGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="day" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}
-                  labelStyle={{ color: '#111827', fontWeight: 600 }}
-                  formatter={(value) => `${value}k`}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="spending"
-                  stroke="#4f46e5"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#spendingGradient)"
-                  dot={{ r: 3, fill: '#4f46e5', stroke: '#fff', strokeWidth: 1 }}
-                  activeDot={{ r: 5 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Xu hướng chi tiêu 7 ngày</h3>
+          <span className="text-sm text-gray-500">(đơn vị: nghìn đồng)</span>
         </div>
-
-        <RecentTransactions items={transactions} />
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="spendingGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="day" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}
+                labelStyle={{ color: '#111827', fontWeight: 600 }}
+                formatter={(value) => `${value}k`}
+              />
+              <Area
+                type="monotone"
+                dataKey="spending"
+                stroke="#4f46e5"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#spendingGradient)"
+                dot={{ r: 3, fill: '#4f46e5', stroke: '#fff', strokeWidth: 1 }}
+                activeDot={{ r: 5 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );

@@ -6,17 +6,27 @@ import {
   Settings,
 } from 'lucide-react';
 
-const AppLayout = ({ children }) => {
-  const [activeLink, setActiveLink] = useState('dashboard');
+const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate }) => {
+  const [internalActiveLink, setInternalActiveLink] = useState('dashboard');
+  const isControlled = typeof controlledActiveLink !== 'undefined';
+  const activeLink = isControlled ? controlledActiveLink : internalActiveLink;
 
   const menuItems = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'transactions', label: 'Giao dịch', icon: ArrowRightLeft },
-    { id: 'report', label: 'Báo cáo', icon: PieChart },
     { id: 'settings', label: 'Cài đặt', icon: Settings },
   ];
 
   const isActive = (id) => activeLink === id;
+
+  const handleNavigate = (id) => {
+    if (!isControlled) {
+      setInternalActiveLink(id);
+    }
+    if (typeof onNavigate === 'function') {
+      onNavigate(id);
+    }
+  };
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
@@ -37,7 +47,7 @@ const AppLayout = ({ children }) => {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveLink(item.id)}
+                    onClick={() => handleNavigate(item.id)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                       isActive(item.id)
                         ? 'bg-indigo-50 text-indigo-600 font-medium shadow-sm'
@@ -72,7 +82,7 @@ const AppLayout = ({ children }) => {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveLink(item.id)}
+                onClick={() => handleNavigate(item.id)}
                 className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all duration-200 rounded-t-lg ${
                   isActive(item.id)
                     ? 'text-indigo-600 bg-indigo-50'

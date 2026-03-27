@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import TransactionList from '../components/TransactionList';
 import TransactionForm from '../components/TransactionForm';
+import InAppScanner from '../components/InAppScanner';
 
 const createDateString = (daysAgo) => {
   const date = new Date();
@@ -85,6 +86,7 @@ const TransactionsPage = () => {
   const [transactions, setTransactions] = useState(initialTransactions);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [isScannerOpen, setScannerOpen] = useState(false);
 
   const summary = useMemo(() => {
     return transactions.reduce(
@@ -133,6 +135,15 @@ const TransactionsPage = () => {
     setTransactions((prev) => prev.filter((item) => item.id !== transaction.id));
   };
 
+  const handleOpenScanner = () => {
+    setScannerOpen(true);
+  };
+
+  const handleCaptureReceipt = (blob) => {
+    if (!blob) return;
+    console.log('Da chup hoa don:', blob);
+  };
+
   const netBalance = summary.income - summary.expense;
   const formatCurrency = (amount) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(amount);
@@ -167,7 +178,8 @@ const TransactionsPage = () => {
 
         <TransactionList
           transactions={transactions}
-          onAddTransaction={() => handleOpenForm()}
+          onOpenManualForm={() => handleOpenForm()}
+          onOpenScanner={handleOpenScanner}
           onEditTransaction={(transaction) => handleOpenForm(transaction)}
           onDeleteTransaction={handleDeleteTransaction}
         />
@@ -179,6 +191,13 @@ const TransactionsPage = () => {
         onSubmit={handleSaveTransaction}
         initialData={editingTransaction}
       />
+
+      {isScannerOpen && (
+        <InAppScanner
+          onClose={() => setScannerOpen(false)}
+          onCapture={handleCaptureReceipt}
+        />
+      )}
     </div>
   );
 };

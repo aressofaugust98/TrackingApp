@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, Edit3, Trash2 } from 'lucide-react';
+import { Plus, Edit3, Trash2, Pencil, Camera } from 'lucide-react';
 import { CATEGORY_STYLES, CATEGORY_FALLBACK } from '../constants/transactionCategories';
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN', {
@@ -48,10 +48,13 @@ const getSortTimestamp = (transaction) => {
 const TransactionList = ({
   transactions = [],
   onAddTransaction,
+  onOpenManualForm,
+  onOpenScanner,
   onEditTransaction,
   onDeleteTransaction,
 }) => {
   const [groupBy, setGroupBy] = useState('date');
+  const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
 
   const groupedTransactions = useMemo(() => {
     if (!transactions.length) return [];
@@ -76,8 +79,24 @@ const TransactionList = ({
   }, [transactions, groupBy]);
 
   const handleFabClick = () => {
+    setIsSpeedDialOpen((prev) => !prev);
+  };
+
+  const handleOpenManual = () => {
+    setIsSpeedDialOpen(false);
+    if (typeof onOpenManualForm === 'function') {
+      onOpenManualForm();
+      return;
+    }
     if (typeof onAddTransaction === 'function') {
       onAddTransaction();
+    }
+  };
+
+  const handleOpenScanner = () => {
+    setIsSpeedDialOpen(false);
+    if (typeof onOpenScanner === 'function') {
+      onOpenScanner();
     }
   };
 
@@ -152,7 +171,7 @@ const TransactionList = ({
                         </div>
                       </div>
                       <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-center">
-                        <div className="text-right min-w-[100px]">
+                        <div className="text-right min-w-25">
                           <p className={`text-sm font-semibold ${amountColor}`}>{formatAmount(transaction)}</p>
                           {transaction.time && (
                             <p className="text-[11px] uppercase tracking-wide text-gray-400">{transaction.time}</p>
@@ -186,14 +205,46 @@ const TransactionList = ({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={handleFabClick}
-        aria-label="Add new transaction"
-        className="fixed bottom-24 right-4 md:bottom-10 md:right-10 h-14 w-14 rounded-full bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40 flex items-center justify-center hover:bg-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all"
-      >
-        <Plus size={28} strokeWidth={2.5} />
-      </button>
+      <div className="fixed bottom-24 right-4 md:bottom-10 md:right-10 z-40 flex flex-col items-end gap-3">
+        <div
+          className={`flex flex-col items-end gap-2 transition-all duration-300 ease-out ${
+            isSpeedDialOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none'
+          }`}
+        >
+          <button
+            type="button"
+            onClick={handleOpenScanner}
+            className={`inline-flex items-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-lg ring-1 ring-gray-200 backdrop-blur transition-all duration-300 hover:bg-white ${
+              isSpeedDialOpen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+            }`}
+          >
+            <Camera size={16} className="text-indigo-600" />
+            Quét hóa đơn
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenManual}
+            className={`inline-flex items-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-lg ring-1 ring-gray-200 backdrop-blur transition-all duration-300 delay-75 hover:bg-white ${
+              isSpeedDialOpen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+            }`}
+          >
+            <Pencil size={16} className="text-indigo-600" />
+            Nhập thủ công
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleFabClick}
+          aria-label="Toggle transaction actions"
+          aria-expanded={isSpeedDialOpen}
+          className={`h-14 w-14 rounded-full bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all duration-300 ${
+            isSpeedDialOpen ? 'rotate-45 bg-indigo-500' : 'rotate-0 hover:bg-indigo-500'
+          }`}
+        >
+          <Plus size={28} strokeWidth={2.5} />
+        </button>
+      </div>
     </div>
   );
 };

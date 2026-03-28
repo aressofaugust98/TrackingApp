@@ -82,11 +82,31 @@ const generateId = () => {
   return `txn-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 };
 
+const mockProcessImage = async (file) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (!file) {
+        reject(new Error('Missing image file'));
+        return;
+      }
+
+      resolve({
+        type: 'Chi tiêu',
+        category: 'Food',
+        amount: 150000,
+        date: '2026-03-28T20:59',
+      });
+    }, 2000);
+  });
+};
+
 const TransactionsPage = () => {
   const [transactions, setTransactions] = useState(initialTransactions);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
-  const [isScannerOpen, setScannerOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [prefilledData, setPrefilledData] = useState(null);
 
   const summary = useMemo(() => {
     return transactions.reduce(
@@ -103,6 +123,7 @@ const TransactionsPage = () => {
   }, [transactions]);
 
   const handleOpenForm = (transaction = null) => {
+    setPrefilledData(null);
     setEditingTransaction(transaction);
     setFormOpen(true);
   };
@@ -110,6 +131,7 @@ const TransactionsPage = () => {
   const handleCloseForm = () => {
     setFormOpen(false);
     setEditingTransaction(null);
+    setPrefilledData(null);
   };
 
   const handleSaveTransaction = (payload) => {
@@ -136,12 +158,24 @@ const TransactionsPage = () => {
   };
 
   const handleOpenScanner = () => {
-    setScannerOpen(true);
+    setIsScannerOpen(true);
   };
 
-  const handleCaptureReceipt = (blob) => {
-    if (!blob) return;
-    console.log('Da chup hoa don:', blob);
+  const handleImageCaptured = async (file) => {
+    setIsScannerOpen(false);
+    setIsProcessing(true);
+
+    try {
+      const data = await mockProcessImage(file);
+      setPrefilledData(data);
+      setEditingTransaction(null);
+      setFormOpen(true);
+    } catch (error) {
+      console.error('AI processing failed', error);
+      alert('Lỗi phân tích hóa đơn!');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const netBalance = summary.income - summary.expense;
@@ -190,13 +224,23 @@ const TransactionsPage = () => {
         onClose={handleCloseForm}
         onSubmit={handleSaveTransaction}
         initialData={editingTransaction}
+        prefilledData={prefilledData}
       />
 
       {isScannerOpen && (
         <InAppScanner
-          onClose={() => setScannerOpen(false)}
-          onCapture={handleCaptureReceipt}
+          onClose={() => setIsScannerOpen(false)}
+          onCapture={handleImageCaptured}
         />
+      )}
+
+      {isProcessing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/55 backdrop-blur-sm">
+          <div className="rounded-2xl bg-white px-6 py-5 text-center shadow-2xl">
+            <p className="text-sm font-semibold text-gray-900">Dang xu ly anh...</p>
+            <p className="mt-1 text-xs text-gray-500">AI dang trich xuat so tien, danh muc va thoi gian giao dich.</p>
+          </div>
+        </div>
       )}
     </div>
   );

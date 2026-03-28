@@ -187,7 +187,17 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
             </label>
           </div>
 
-          
+          <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
+            Ghi chú
+            <textarea
+              name="note"
+              value={values.note}
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 px-4 py-3 resize-none"
+              rows="3"
+              placeholder="Thêm ghi chú cho giao dịch này..."
+            />
+          </label>
 
           {error && <p className="text-sm text-rose-500">{error}</p>}
 

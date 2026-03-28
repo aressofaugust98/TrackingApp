@@ -23,59 +23,54 @@ const chartData = [
   { day: 'CN', spending: 150 },
 ];
 
-const processReceiptImage = async (imageBlob) => {
-  if (!imageBlob) {
-    throw new Error('Missing image blob');
-  }
-
-  await new Promise((resolve) => {
-    setTimeout(resolve, 2000);
+const mockProcessImage = async (file) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        type: 'Chi tiêu',
+        category: 'Food',
+        amount: 150000,
+        date: '2026-03-28T20:59',
+      });
+    }, 2000);
   });
-
-  return {
-    type: 'Chi tiêu',
-    category: 'Food',
-    amount: 150000,
-    date: '2026-03-27T20:59',
-  };
 };
 
 const Dashboard = () => {
-  const [isScannerOpen, setScannerOpen] = useState(false);
-  const [isProcessingImage, setProcessingImage] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
-  const [isTransactionModalOpen, setTransactionModalOpen] = useState(false);
 
   const handleOpenManualModal = () => {
     setPrefilledData(null);
-    setTransactionModalOpen(true);
+    setIsModalOpen(true);
   };
 
   const handleCloseTransactionModal = () => {
-    setTransactionModalOpen(false);
+    setIsModalOpen(false);
     setPrefilledData(null);
   };
 
-  const handleCaptureReceipt = async (blob) => {
-    if (!blob) return;
-
-    setScannerOpen(false);
-    setProcessingImage(true);
+  const handleImageCaptured = async (file) => {
+    setIsScannerOpen(false); // Close scanner immediately
+    setIsProcessing(true);   // Show loading overlay
 
     try {
-      const aiResult = await processReceiptImage(blob);
-      setProcessingImage(false);
-      setPrefilledData(aiResult);
-      setTransactionModalOpen(true);
+      const data = await mockProcessImage(file);
+      setPrefilledData(data); // Save the AI data
+      setIsModalOpen(true);   // Open the form modal
     } catch (error) {
-      console.error('Failed to process receipt image:', error);
-      setProcessingImage(false);
+      console.error('AI processing failed', error);
+      alert('Lỗi phân tích hóa đơn!');
+    } finally {
+      setIsProcessing(false); // Hide loading
     }
   };
 
   const handleSubmitTransaction = (payload) => {
     console.log('Transaction submitted from dashboard:', payload);
-    setTransactionModalOpen(false);
+    setIsModalOpen(false);
     setPrefilledData(null);
   };
 
@@ -84,15 +79,17 @@ const Dashboard = () => {
       <div className="space-y-4">
         <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
         <p className="text-gray-600">Ảnh nhìn nhanh về số dư, giao dịch và xu hướng chi tiêu.</p>
+        
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => setScannerOpen(true)}
+            onClick={() => setIsScannerOpen(true)}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500"
           >
             <Camera size={16} />
             Quét hoá đơn
           </button>
+          
           <button
             type="button"
             onClick={handleOpenManualModal}
@@ -144,7 +141,7 @@ const Dashboard = () => {
       </div>
 
       <TransactionForm
-        open={isTransactionModalOpen}
+        open={isModalOpen}
         onClose={handleCloseTransactionModal}
         onSubmit={handleSubmitTransaction}
         prefilledData={prefilledData}
@@ -152,15 +149,15 @@ const Dashboard = () => {
 
       {isScannerOpen && (
         <InAppScanner
-          onClose={() => setScannerOpen(false)}
-          onCapture={handleCaptureReceipt}
+          onClose={() => setIsScannerOpen(false)}
+          onCapture={handleImageCaptured}
         />
       )}
 
-      {isProcessingImage && (
+      {isProcessing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/55 backdrop-blur-sm">
           <div className="rounded-2xl bg-white px-6 py-5 text-center shadow-2xl">
-            <p className="text-sm font-semibold text-gray-900">Đang xử lý ảnh hoá đơn...</p>
+            <p className="text-sm font-semibold text-gray-900">Đang xử lý ảnh...</p>
             <p className="mt-1 text-xs text-gray-500">AI đang trích xuất số tiền, danh mục và thời gian giao dịch.</p>
           </div>
         </div>

@@ -14,26 +14,53 @@ const createDefaultValues = () => {
   };
 };
 
-const TransactionForm = ({ open, onClose, onSubmit, initialData }) => {
+const normalizeType = (typeValue) => {
+  if (!typeValue) return 'expense';
+  if (typeValue === 'income' || typeValue === 'expense') return typeValue;
+
+  const normalized = String(typeValue).trim().toLowerCase();
+  if (normalized === 'chi tiêu' || normalized === 'chi tieu' || normalized === 'expense') {
+    return 'expense';
+  }
+  if (normalized === 'thu nhập' || normalized === 'thu nhap' || normalized === 'income') {
+    return 'income';
+  }
+
+  return 'expense';
+};
+
+const buildInitialValues = (data) => {
+  const defaults = createDefaultValues();
+  if (!data) return defaults;
+
+  const parsedDate = data.date ? new Date(data.date) : null;
+  const hasValidDate = parsedDate instanceof Date && !Number.isNaN(parsedDate?.getTime?.());
+  const resolvedDate = hasValidDate ? parsedDate.toISOString().slice(0, 10) : defaults.date;
+  const resolvedTime =
+    data.time ||
+    (typeof data.date === 'string' && data.date.includes('T') ? data.date.slice(11, 16) : '') ||
+    defaults.time;
+
+  return {
+    type: normalizeType(data.type),
+    category: data.category || CATEGORY_OPTIONS[0]?.value || 'Food',
+    amount: typeof data.amount === 'number' ? String(Math.abs(data.amount)) : data.amount || '',
+    note: data.note || '',
+    date: resolvedDate,
+    time: resolvedTime,
+  };
+};
+
+const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData = null }) => {
   const [values, setValues] = useState(createDefaultValues());
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!open) return;
-    if (initialData) {
-      setValues({
-        type: initialData.type || 'expense',
-        category: initialData.category || CATEGORY_OPTIONS[0]?.value || 'Food',
-        amount: typeof initialData.amount === 'number' ? String(Math.abs(initialData.amount)) : initialData.amount || '',
-        note: initialData.note || '',
-        date: initialData.date ? initialData.date.slice(0, 10) : createDefaultValues().date,
-        time: initialData.time || createDefaultValues().time,
-      });
-    } else {
-      setValues(createDefaultValues());
-    }
+    const sourceData = prefilledData || initialData;
+    setValues(buildInitialValues(sourceData));
     setError('');
-  }, [open, initialData]);
+  }, [open, initialData, prefilledData]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -96,24 +123,15 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
               Loại giao dịch
-              <div className="grid grid-cols-2 rounded-2xl border border-gray-200 overflow-hidden">
-                {['income', 'expense'].map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setValues((prev) => ({ ...prev, type }))}
-                    className={`py-3 text-sm font-semibold transition-colors ${
-                      values.type === type
-                        ? type === 'income'
-                          ? 'bg-emerald-50 text-emerald-600'
-                          : 'bg-rose-50 text-rose-600'
-                        : 'text-gray-500'
-                    }`}
-                  >
-                    {type === 'income' ? 'Thu nhập' : 'Chi tiêu'}
-                  </button>
-                ))}
-              </div>
+              <select
+                name="type"
+                value={values.type}
+                onChange={handleChange}
+                className="w-full rounded-2xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+              >
+                <option value="expense">Chi tiêu</option>
+                <option value="income">Thu nhập</option>
+              </select>
             </label>
 
             <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">

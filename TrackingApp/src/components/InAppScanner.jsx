@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { Camera, X } from 'lucide-react';
+import { Camera, Image, X } from 'lucide-react';
 
 const InAppScanner = ({ onClose, onCapture }) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,9 +71,29 @@ const InAppScanner = ({ onClose, onCapture }) => {
     );
   };
 
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (typeof onCapture === 'function') {
+        onCapture(file);
+      }
+      if (typeof onClose === 'function') {
+        onClose();
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black">
       <video ref={videoRef} autoPlay playsInline className="object-cover w-full h-full" />
+
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+      />
 
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
         <div className="h-[62vh] w-full max-w-sm rounded-3xl border-2 border-white/65 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
@@ -98,7 +119,14 @@ const InAppScanner = ({ onClose, onCapture }) => {
           <Camera size={26} className="relative" />
         </button>
 
-        <div className="w-[92px]" aria-hidden="true" />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-black/30 px-5 py-3 text-sm font-semibold text-white backdrop-blur hover:bg-black/45"
+        >
+          <Image size={16} />
+          Gallery
+        </button>
       </div>
     </div>
   );

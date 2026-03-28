@@ -79,6 +79,7 @@ const Dashboard = () => {
       <div className="space-y-4">
         <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
         <p className="text-gray-600">Ảnh nhìn nhanh về số dư, giao dịch và xu hướng chi tiêu.</p>
+        
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -88,15 +89,12 @@ const Dashboard = () => {
             <Camera size={16} />
             Quét hoá đơn
           </button>
+          
           <button
             type="button"
             onClick={handleOpenManualModal}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
-            <Plus size={16} />
-            Thêm giao dịch
-          </button>
-        </div>
             <Plus size={16} />
             Thêm giao dịch
           </button>

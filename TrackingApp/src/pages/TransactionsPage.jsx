@@ -2,78 +2,7 @@ import React, { useMemo, useState } from 'react';
 import TransactionList from '../components/TransactionList';
 import TransactionForm from '../components/TransactionForm';
 import InAppScanner from '../components/InAppScanner';
-
-const createDateString = (daysAgo) => {
-  const date = new Date();
-  date.setDate(date.getDate() - daysAgo);
-  return date.toISOString().split('T')[0];
-};
-
-const initialTransactions = [
-  {
-    id: 'txn-1',
-    category: 'Salary',
-    note: 'Lương tháng 1',
-    amount: 25000000,
-    type: 'income',
-    date: createDateString(0),
-    time: '09:00',
-  },
-  {
-    id: 'txn-2',
-    category: 'Food',
-    note: 'Bữa sáng Phở Thìn',
-    amount: 75000,
-    type: 'expense',
-    date: createDateString(0),
-    time: '07:45',
-  },
-  {
-    id: 'txn-3',
-    category: 'Transport',
-    note: 'GrabCar tới công ty',
-    amount: 90000,
-    type: 'expense',
-    date: createDateString(0),
-    time: '08:20',
-  },
-  {
-    id: 'txn-4',
-    category: 'Shopping',
-    note: 'Áo sơ mi Uniqlo',
-    amount: 650000,
-    type: 'expense',
-    date: createDateString(1),
-    time: '18:30',
-  },
-  {
-    id: 'txn-5',
-    category: 'Entertainment',
-    note: 'CGV cuối tuần',
-    amount: 320000,
-    type: 'expense',
-    date: createDateString(2),
-    time: '20:10',
-  },
-  {
-    id: 'txn-6',
-    category: 'Utilities',
-    note: 'Hoá đơn internet',
-    amount: 280000,
-    type: 'expense',
-    date: createDateString(3),
-    time: '10:05',
-  },
-  {
-    id: 'txn-7',
-    category: 'Travel',
-    note: 'Vé máy bay Đà Nẵng',
-    amount: 4800000,
-    type: 'expense',
-    date: createDateString(5),
-    time: '11:15',
-  },
-];
+import { SAMPLE_TRANSACTIONS } from '../constants/sampleTransactions';
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -100,13 +29,24 @@ const mockProcessImage = async (file) => {
   });
 };
 
-const TransactionsPage = ({ wallets = [] }) => {
-  const [transactions, setTransactions] = useState(initialTransactions);
+const TransactionsPage = ({ wallets = [], transactions: controlledTransactions, onTransactionsChange }) => {
+  const isControlled = Array.isArray(controlledTransactions);
+  const [internalTransactions, setInternalTransactions] = useState(SAMPLE_TRANSACTIONS);
+  const transactions = isControlled ? controlledTransactions : internalTransactions;
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
+
+  const updateTransactions = (updater) => {
+    if (typeof onTransactionsChange === 'function') {
+      onTransactionsChange(updater);
+    }
+    if (!isControlled) {
+      setInternalTransactions((prev) => (typeof updater === 'function' ? updater(prev) : updater));
+    }
+  };
 
   const summary = useMemo(() => {
     return transactions.reduce(
@@ -136,11 +76,11 @@ const TransactionsPage = ({ wallets = [] }) => {
 
   const handleSaveTransaction = (payload) => {
     if (editingTransaction) {
-      setTransactions((prev) =>
+      updateTransactions((prev) =>
         prev.map((item) => (item.id === editingTransaction.id ? { ...item, ...payload } : item))
       );
     } else {
-      setTransactions((prev) => [
+      updateTransactions((prev) => [
         {
           id: generateId(),
           ...payload,
@@ -154,7 +94,7 @@ const TransactionsPage = ({ wallets = [] }) => {
   const handleDeleteTransaction = (transaction) => {
     const confirmed = window.confirm('Bạn có chắc muốn xoá giao dịch này?');
     if (!confirmed) return;
-    setTransactions((prev) => prev.filter((item) => item.id !== transaction.id));
+    updateTransactions((prev) => prev.filter((item) => item.id !== transaction.id));
   };
 
   const handleOpenScanner = () => {

@@ -100,7 +100,7 @@ const mockProcessImage = async (file) => {
   });
 };
 
-const TransactionsPage = () => {
+const TransactionsPage = ({ wallets = [] }) => {
   const [transactions, setTransactions] = useState(initialTransactions);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
@@ -225,6 +225,7 @@ const TransactionsPage = () => {
         onSubmit={handleSaveTransaction}
         initialData={editingTransaction}
         prefilledData={prefilledData}
+        wallets={wallets}
       />
 
       {isScannerOpen && (

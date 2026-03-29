@@ -7,16 +7,19 @@ const createDefaultValues = () => {
   return {
     type: 'expense',
     category: CATEGORY_OPTIONS[0]?.value || 'Food',
+    wallet: '',
     amount: '',
     note: '',
     date: now.toISOString().split('T')[0],
     time: now.toTimeString().slice(0, 5),
+    sourceWallet: '',
+    destinationWallet: '',
   };
 };
 
 const normalizeType = (typeValue) => {
   if (!typeValue) return 'expense';
-  if (typeValue === 'income' || typeValue === 'expense') return typeValue;
+  if (typeValue === 'income' || typeValue === 'expense' || typeValue === 'transfer') return typeValue;
 
   const normalized = String(typeValue).trim().toLowerCase();
   if (normalized === 'chi tiêu' || normalized === 'chi tieu' || normalized === 'expense') {
@@ -24,6 +27,9 @@ const normalizeType = (typeValue) => {
   }
   if (normalized === 'thu nhập' || normalized === 'thu nhap' || normalized === 'income') {
     return 'income';
+  }
+  if (normalized === 'chuyển tiền' || normalized === 'chuyen tien' || normalized === 'transfer') {
+    return 'transfer';
   }
 
   return 'expense';
@@ -44,16 +50,24 @@ const buildInitialValues = (data) => {
   return {
     type: normalizeType(data.type),
     category: data.category || CATEGORY_OPTIONS[0]?.value || 'Food',
+    wallet: data.wallet || '',
     amount: typeof data.amount === 'number' ? String(Math.abs(data.amount)) : data.amount || '',
     note: data.note || '',
     date: resolvedDate,
     time: resolvedTime,
+    sourceWallet: data.sourceWallet || '',
+    destinationWallet: data.destinationWallet || '',
   };
 };
 
-const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData = null }) => {
+const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData = null, wallets = [] }) => {
   const [values, setValues] = useState(createDefaultValues());
   const [error, setError] = useState('');
+  const isTransferWithSameWallets =
+    values.type === 'transfer' &&
+    values.sourceWallet &&
+    values.destinationWallet &&
+    values.sourceWallet === values.destinationWallet;
 
   useEffect(() => {
     if (!open) return;
@@ -65,6 +79,9 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
   const handleChange = (event) => {
     const { name, value } = event.target;
     setValues((prev) => ({ ...prev, [name]: value }));
+    if (error) {
+      setError('');
+    }
   };
 
   const handleSubmit = (event) => {
@@ -79,16 +96,43 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
       return;
     }
 
+    if (values.type !== 'transfer' && !values.wallet) {
+      setError('Vui lòng chọn ví');
+      return;
+    }
+
+    // Validation for transfer type
+    if (values.type === 'transfer') {
+      if (!values.sourceWallet || !values.destinationWallet) {
+        setError('Vui lòng chọn ví nguồn và ví đích');
+        return;
+      }
+      if (values.sourceWallet === values.destinationWallet) {
+        setError('Ví nguồn và ví đích không thể giống nhau');
+        return;
+      }
+    }
+
     const payload = {
       type: values.type,
-      category: values.category,
       amount: parsedAmount,
       note: values.note.trim(),
       date: values.date,
       time: values.time,
     };
 
+    // Add category and wallet for income/expense transactions
+    if (values.type !== 'transfer') {
+      payload.category = values.category;
+      payload.wallet = values.wallet;
+    } else {
+      // Add wallet info for transfer transactions
+      payload.sourceWallet = values.sourceWallet;
+      payload.destinationWallet = values.destinationWallet;
+    }
+
     if (typeof onSubmit === 'function') {
+      console.log('TRANSACTION FORM SUBMIT PAYLOAD:', payload);
       onSubmit(payload);
     }
   };
@@ -120,7 +164,7 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
               Loại giao dịch
               <select
@@ -131,24 +175,82 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
               >
                 <option value="expense">Chi tiêu</option>
                 <option value="income">Thu nhập</option>
+                <option value="transfer">Chuyển tiền</option>
               </select>
             </label>
 
-            <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
-              Danh mục
-              <select
-                name="category"
-                value={values.category}
-                onChange={handleChange}
-                className="w-full rounded-2xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
-              >
-                {CATEGORY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {values.type !== 'transfer' ? (
+              <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
+                Danh mục
+                <select
+                  name="category"
+                  value={values.category}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  {CATEGORY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {values.type !== 'transfer' ? (
+              <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
+                Ví
+                <select
+                  name="wallet"
+                  value={values.wallet}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  <option value="">-- Chọn ví --</option>
+                  {wallets.map((wallet) => (
+                    <option key={wallet.id} value={wallet.id}>
+                      {wallet.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <>
+                <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
+                  Từ ví
+                  <select
+                    name="sourceWallet"
+                    value={values.sourceWallet}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                  >
+                    <option value="">-- Chọn ví --</option>
+                    {wallets.map((wallet) => (
+                      <option key={wallet.id} value={wallet.id}>
+                        {wallet.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
+                  Đến ví
+                  <select
+                    name="destinationWallet"
+                    value={values.destinationWallet}
+                    onChange={handleChange}
+                    className="w-full rounded-2xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                  >
+                    <option value="">-- Chọn ví --</option>
+                    {wallets.map((wallet) => (
+                      <option key={wallet.id} value={wallet.id}>
+                        {wallet.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -199,6 +301,10 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
             />
           </label>
 
+          {isTransferWithSameWallets && (
+            <p className="text-sm text-amber-600">Ví nguồn và ví đích không được trùng nhau</p>
+          )}
+
           {error && <p className="text-sm text-rose-500">{error}</p>}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -211,7 +317,8 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
             </button>
             <button
               type="submit"
-              className="w-full sm:w-auto rounded-2xl bg-indigo-600 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500"
+              disabled={isTransferWithSameWallets}
+              className="w-full sm:w-auto rounded-2xl bg-indigo-600 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-300 disabled:shadow-none"
             >
               {initialData ? 'Cập nhật' : 'Thêm mới'}
             </button>

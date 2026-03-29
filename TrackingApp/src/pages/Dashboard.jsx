@@ -36,7 +36,15 @@ const mockProcessImage = async (file) => {
   });
 };
 
-const Dashboard = () => {
+const submitToAPI = async (payload) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ success: true, payload });
+    }, 1000);
+  });
+};
+
+const Dashboard = ({ wallets = [] }) => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,8 +76,10 @@ const Dashboard = () => {
     }
   };
 
-  const handleSubmitTransaction = (payload) => {
-    console.log('Transaction submitted from dashboard:', payload);
+  const handleSubmitTransaction = async (data) => {
+    await submitToAPI(data);
+    console.log('PAYLOAD SENT TO API:', data);
+    alert('Giao dịch thành công!');
     setIsModalOpen(false);
     setPrefilledData(null);
   };
@@ -145,6 +155,7 @@ const Dashboard = () => {
         onClose={handleCloseTransactionModal}
         onSubmit={handleSubmitTransaction}
         prefilledData={prefilledData}
+        wallets={wallets}
       />
 
       {isScannerOpen && (

@@ -2,11 +2,21 @@ import React, { useState } from 'react';
 import {
   LayoutDashboard,
   ArrowRightLeft,
-  PieChart,
+  Wallet,
   Settings,
+  LogOut as LogOutIcon,
 } from 'lucide-react';
+import WalletManager from './WalletManager';
+import { logOut } from '../services/authService';
 
-const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate }) => {
+const AppLayout = ({
+  children,
+  activeLink: controlledActiveLink,
+  onNavigate,
+  wallets = [],
+  handleAddWallet,
+  onLogoutSuccess,
+}) => {
   const [internalActiveLink, setInternalActiveLink] = useState('dashboard');
   const isControlled = typeof controlledActiveLink !== 'undefined';
   const activeLink = isControlled ? controlledActiveLink : internalActiveLink;
@@ -14,6 +24,7 @@ const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate }) =
   const menuItems = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'transactions', label: 'Giao dịch', icon: ArrowRightLeft },
+    { id: 'wallets', label: 'Ví tiền', icon: Wallet },
     { id: 'settings', label: 'Cài đặt', icon: Settings },
   ];
 
@@ -25,6 +36,21 @@ const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate }) =
     }
     if (typeof onNavigate === 'function') {
       onNavigate(id);
+    }
+  };
+
+  const handleLogOut = async () => {
+    const token = localStorage.getItem('accessToken');
+
+    try {
+      await logOut(token);
+    } catch (error) {
+      console.error('Log out failed:', error);
+    } finally {
+      localStorage.removeItem('accessToken');
+      if (typeof onLogoutSuccess === 'function') {
+        onLogoutSuccess();
+      }
     }
   };
 
@@ -40,7 +66,7 @@ const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate }) =
           </div>
 
           {/* Navigation Menu */}
-          <nav className="flex-1 p-4 overflow-y-auto">
+          <nav className="flex-1 p-4 overflow-y-auto flex flex-col">
             <div className="space-y-2">
               {menuItems.map((item) => {
                 const Icon = item.icon;
@@ -60,6 +86,14 @@ const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate }) =
                 );
               })}
             </div>
+
+            <button
+              onClick={handleLogOut}
+              className="w-full mt-4 flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200"
+            >
+              <LogOutIcon size={20} />
+              <span className="font-medium">Đăng xuất</span>
+            </button>
           </nav>
 
           {/* Sidebar Footer */}
@@ -71,7 +105,11 @@ const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate }) =
 
       {/* Main Content Area */}
       <main className="flex-1 pb-24 md:pb-0">
-        {children}
+        {activeLink === 'wallets' ? (
+          <WalletManager wallets={wallets} onAddWallet={handleAddWallet} />
+        ) : (
+          children
+        )}
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
@@ -95,6 +133,15 @@ const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate }) =
               </button>
             );
           })}
+
+          <button
+            onClick={handleLogOut}
+            className="flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all duration-200 rounded-t-lg text-red-600 hover:text-red-700 hover:bg-red-50"
+            title="Đăng xuất"
+          >
+            <LogOutIcon size={24} />
+            <span className="text-xs font-medium">Đăng xuất</span>
+          </button>
         </div>
       </nav>
     </div>

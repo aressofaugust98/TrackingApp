@@ -1,16 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { logIn } from '../services/authService';
 
-const LoginPage = ({ onRegister, onForgot, onSignIn }) => {
-  const handleSubmit = (event) => {
+const LoginPage = ({ onRegister, onForgot, onSignIn, onLoginSuccess }) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (error) {
+      setError('');
+    }
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (onSignIn) onSignIn();
+
+    try {
+      setIsSubmitting(true);
+      setError('');
+      const response = await logIn({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+
+      console.log('LOGIN RESPONSE:', response);
+      if (response?.token) {
+        localStorage.setItem('accessToken', response.token);
+      }
+
+      if (onLoginSuccess) onLoginSuccess(response);
+      if (onSignIn) onSignIn(response);
+    } catch (submitError) {
+      setError(submitError.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen w-full bg-gray-50 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8 space-y-8">
         <div className="flex flex-col items-center space-y-3">
-          <div className="h-12 w-12 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+          <div className="h-12 w-12 rounded-full bg-linear-to-r from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
             F
           </div>
           <div className="text-center space-y-1">
@@ -24,8 +60,11 @@ const LoginPage = ({ onRegister, onForgot, onSignIn }) => {
             <div className="relative">
               <input
                 id="email"
+                name="email"
                 type="email"
                 required
+                value={formData.email}
+                onChange={handleChange}
                 className="peer w-full rounded-lg border border-gray-200 bg-white px-4 pt-4 pb-2 text-gray-900 placeholder-transparent shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 placeholder="Email"
               />
@@ -40,8 +79,11 @@ const LoginPage = ({ onRegister, onForgot, onSignIn }) => {
             <div className="relative">
               <input
                 id="password"
+                name="password"
                 type="password"
                 required
+                value={formData.password}
+                onChange={handleChange}
                 className="peer w-full rounded-lg border border-gray-200 bg-white px-4 pt-4 pb-2 text-gray-900 placeholder-transparent shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 placeholder="Mật khẩu"
               />
@@ -54,11 +96,14 @@ const LoginPage = ({ onRegister, onForgot, onSignIn }) => {
             </div>
           </div>
 
+          {error && <p className="text-sm text-rose-600">{error}</p>}
+
           <button
             type="submit"
-            className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-white font-semibold shadow-md transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            disabled={isSubmitting}
+            className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-white font-semibold shadow-md transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-indigo-300"
           >
-            Đăng nhập
+            {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
 
           <div className="flex items-center justify-between text-sm">

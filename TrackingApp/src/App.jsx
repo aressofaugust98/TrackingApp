@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import AppLayout from './components/AppLayout'
 import WalletManager from './components/WalletManager'
@@ -7,17 +7,28 @@ import Dashboard from './pages/Dashboard'
 import TransactionsPage from './pages/TransactionsPage'
 import ReportsPage from './pages/ReportsPage'
 import { SAMPLE_TRANSACTIONS } from './constants/sampleTransactions'
+import { getAllWallets } from './services/walletService'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     () => !!localStorage.getItem('accessToken')
   )
   const [appSection, setAppSection] = useState('dashboard')
-  const [wallets, setWallets] = useState([
-    { id: '1', name: 'Tiền mặt', balance: 5000000 },
-    { id: '2', name: 'Thẻ VCB', balance: 12000000 },
-  ])
+  const [wallets, setWallets] = useState([])
   const [transactions, setTransactions] = useState(SAMPLE_TRANSACTIONS)
+
+  const fetchWallets = async () => {
+    try {
+      const data = await getAllWallets()
+      setWallets(data)
+    } catch (error) {
+      console.error('Failed to fetch wallets:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchWallets()
+  }, [])
 
   const handleLoginSuccess = () => {
     setAppSection('dashboard')
@@ -61,7 +72,13 @@ function App() {
       case 'reports':
         return <ReportsPage wallets={wallets} transactions={transactions} />
       case 'wallets':
-        return <WalletManager wallets={wallets} onAddWallet={handleAddWallet} />
+        return (
+          <WalletManager
+            wallets={wallets}
+            onAddWallet={handleAddWallet}
+            onRefreshWallets={fetchWallets}
+          />
+        )
       case 'settings':
         return (
           <div className="p-6">

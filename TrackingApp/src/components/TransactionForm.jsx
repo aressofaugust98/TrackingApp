@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { CATEGORY_OPTIONS } from '../constants/transactionCategories';
+import { getAllCategories } from '../services/categoryService';
 
 const createDefaultValues = () => {
   const now = new Date();
   return {
     type: 'expense',
-    category: CATEGORY_OPTIONS[0]?.value || 'Food',
+    category: '',
     wallet: '',
     amount: '',
     note: '',
@@ -49,7 +49,7 @@ const buildInitialValues = (data) => {
 
   return {
     type: normalizeType(data.type),
-    category: data.category || CATEGORY_OPTIONS[0]?.value || 'Food',
+    category: data.category || '',
     wallet: data.wallet || '',
     amount: typeof data.amount === 'number' ? String(Math.abs(data.amount)) : data.amount || '',
     note: data.note || '',
@@ -62,6 +62,7 @@ const buildInitialValues = (data) => {
 
 const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData = null, wallets = [] }) => {
   const [values, setValues] = useState(createDefaultValues());
+  const [categories, setCategories] = useState([]);
   const [error, setError] = useState('');
   const isTransferWithSameWallets =
     values.type === 'transfer' &&
@@ -71,10 +72,43 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
 
   useEffect(() => {
     if (!open) return;
-    const sourceData = prefilledData || initialData;
-    setValues(buildInitialValues(sourceData));
+    setValues(buildInitialValues(initialData));
     setError('');
-  }, [open, initialData, prefilledData]);
+  }, [open, initialData]);
+
+  useEffect(() => {
+    if (!open || !prefilledData) return;
+
+    const aiValues = buildInitialValues(prefilledData);
+    setValues((prev) => ({
+      ...prev,
+      type: aiValues.type,
+      amount: aiValues.amount,
+      date: aiValues.date,
+      time: aiValues.time,
+      note: aiValues.note,
+      category: aiValues.category,
+    }));
+    setError('');
+  }, [open, prefilledData]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await getAllCategories();
+        setCategories(Array.isArray(data) ? data : []);
+      } catch (fetchError) {
+        console.error('Failed to fetch categories:', fetchError);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  const hasCategoryType = categories.some((category) => typeof category?.type === 'string' && category.type.trim());
+  const visibleCategories = hasCategoryType
+    ? categories.filter((category) => normalizeType(category.type) === values.type)
+    : categories;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -188,9 +222,10 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
                   onChange={handleChange}
                   className="w-full rounded-2xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
                 >
-                  {CATEGORY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                  <option value="">-- Chọn danh mục --</option>
+                  {visibleCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>

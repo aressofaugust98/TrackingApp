@@ -12,6 +12,7 @@ import {
 import BalanceCard from '../components/BalanceCard';
 import InAppScanner from '../components/InAppScanner';
 import TransactionForm from '../components/TransactionForm';
+import { extractInvoice } from '../services/ocrService';
 
 const chartData = [
   { day: 'T2', spending: 120 },
@@ -23,17 +24,19 @@ const chartData = [
   { day: 'CN', spending: 150 },
 ];
 
-const mockProcessImage = async (file) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        type: 'Chi tiêu',
-        category: 'Food',
-        amount: 150000,
-        date: '2026-03-28T20:59',
-      });
-    }, 2000);
-  });
+const mapExtractedInvoiceToPrefill = (ocrResponse) => {
+  const extracted = ocrResponse?.extracted || {};
+  const localDateTime = typeof extracted.LocalDateTime === 'string' ? extracted.LocalDateTime.trim() : '';
+  const [datePart = '', timePartRaw = ''] = localDateTime.split(' ');
+  const timePart = timePartRaw ? timePartRaw.slice(0, 5) : '';
+
+  return {
+    amount: extracted.Total ?? '',
+    date: datePart,
+    time: timePart,
+    type: 'expense',
+    note: `Quét tự động - ${extracted.Category || ''}`.trim(),
+  };
 };
 
 const submitToAPI = async (payload) => {
@@ -46,7 +49,7 @@ const submitToAPI = async (payload) => {
 
 const Dashboard = ({ wallets = [] }) => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
 
@@ -60,19 +63,23 @@ const Dashboard = ({ wallets = [] }) => {
     setPrefilledData(null);
   };
 
-  const handleImageCaptured = async (file) => {
-    setIsScannerOpen(false); // Close scanner immediately
-    setIsProcessing(true);   // Show loading overlay
-
+  const handleImageCaptured = async (imageBlob) => {
+    setIsExtracting(true);
     try {
-      const data = await mockProcessImage(file);
-      setPrefilledData(data); // Save the AI data
-      setIsModalOpen(true);   // Open the form modal
+      const extractedData = await extractInvoice(imageBlob);
+      console.log('EXTRACTED INVOICE DATA:', extractedData);
+
+      setPrefilledData(mapExtractedInvoiceToPrefill(extractedData));
+      setIsScannerOpen(false);
+      setIsModalOpen(true);
     } catch (error) {
       console.error('AI processing failed', error);
-      alert('Lỗi phân tích hóa đơn!');
+      alert('Lỗi phân tích hóa đơn, vui lòng nhập thủ công');
+      setPrefilledData(null);
+      setIsScannerOpen(false);
+      setIsModalOpen(true);
     } finally {
-      setIsProcessing(false); // Hide loading
+      setIsExtracting(false);
     }
   };
 
@@ -118,8 +125,8 @@ const Dashboard = ({ wallets = [] }) => {
           <h3 className="text-lg font-semibold text-gray-900">Xu hướng chi tiêu 7 ngày</h3>
           <span className="text-sm text-gray-500">(đơn vị: nghìn đồng)</span>
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-64 min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="spendingGradient" x1="0" y1="0" x2="0" y2="1">
@@ -165,10 +172,10 @@ const Dashboard = ({ wallets = [] }) => {
         />
       )}
 
-      {isProcessing && (
+      {isExtracting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/55 backdrop-blur-sm">
           <div className="rounded-2xl bg-white px-6 py-5 text-center shadow-2xl">
-            <p className="text-sm font-semibold text-gray-900">Đang xử lý ảnh...</p>
+            <p className="text-sm font-semibold text-gray-900">Đang nhờ AI đọc hóa đơn...</p>
             <p className="mt-1 text-xs text-gray-500">AI đang trích xuất số tiền, danh mục và thời gian giao dịch.</p>
           </div>
         </div>

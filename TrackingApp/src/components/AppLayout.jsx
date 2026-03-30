@@ -3,20 +3,13 @@ import {
   LayoutDashboard,
   ArrowRightLeft,
   Wallet,
+  BarChart3,
   Settings,
   LogOut as LogOutIcon,
 } from 'lucide-react';
-import WalletManager from './WalletManager';
 import { logOut } from '../services/authService';
 
-const AppLayout = ({
-  children,
-  activeLink: controlledActiveLink,
-  onNavigate,
-  wallets = [],
-  handleAddWallet,
-  onLogoutSuccess,
-}) => {
+const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate, onLogoutSuccess }) => {
   const [internalActiveLink, setInternalActiveLink] = useState('dashboard');
   const isControlled = typeof controlledActiveLink !== 'undefined';
   const activeLink = isControlled ? controlledActiveLink : internalActiveLink;
@@ -24,6 +17,7 @@ const AppLayout = ({
   const menuItems = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'transactions', label: 'Giao dịch', icon: ArrowRightLeft },
+    { id: 'reports', label: 'Báo cáo', icon: BarChart3 },
     { id: 'wallets', label: 'Ví tiền', icon: Wallet },
     { id: 'settings', label: 'Cài đặt', icon: Settings },
   ];
@@ -104,13 +98,7 @@ const AppLayout = ({
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-24 md:pb-0">
-        {activeLink === 'wallets' ? (
-          <WalletManager wallets={wallets} onAddWallet={handleAddWallet} />
-        ) : (
-          children
-        )}
-      </main>
+      <main className="flex-1 pb-24 md:pb-0">{children}</main>
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, Edit3, Trash2, Pencil, Camera } from 'lucide-react';
+import { Plus, Edit3, Trash2, Pencil, Camera, CalendarRange, ChevronDown } from 'lucide-react';
 import { CATEGORY_STYLES, CATEGORY_FALLBACK } from '../constants/transactionCategories';
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN', {
@@ -45,6 +45,82 @@ const getSortTimestamp = (transaction) => {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
+const getEndOfDay = (value) => {
+  const date = normalizeToStartOfDay(value);
+  if (!date) return null;
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+
+const RANGE_OPTIONS = [
+  { id: 'thisMonth', label: 'Tháng này' },
+  { id: 'today', label: 'Hôm nay' },
+  { id: 'yesterday', label: 'Hôm qua' },
+  { id: 'thisWeek', label: 'Tuần này' },
+  { id: 'lastWeek', label: 'Tuần trước' },
+  { id: 'custom', label: 'Tùy chọn' },
+];
+
+const getRangeBounds = (rangeId, customRange = null) => {
+  const todayStart = normalizeToStartOfDay(new Date());
+  const todayEnd = getEndOfDay(new Date());
+
+  switch (rangeId) {
+    case 'today':
+      return { start: todayStart, end: todayEnd };
+    case 'yesterday': {
+      const start = new Date(todayStart);
+      start.setDate(start.getDate() - 1);
+      return { start, end: getEndOfDay(start) };
+    }
+    case 'thisWeek': {
+      const currentDay = todayStart.getDay() === 0 ? 7 : todayStart.getDay();
+      const start = new Date(todayStart);
+      start.setDate(start.getDate() - (currentDay - 1));
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      return { start, end: getEndOfDay(end) };
+    }
+    case 'lastWeek': {
+      const currentDay = todayStart.getDay() === 0 ? 7 : todayStart.getDay();
+      const thisWeekStart = new Date(todayStart);
+      thisWeekStart.setDate(thisWeekStart.getDate() - (currentDay - 1));
+      const start = new Date(thisWeekStart);
+      start.setDate(start.getDate() - 7);
+      const end = new Date(thisWeekStart);
+      end.setDate(end.getDate() - 1);
+      return { start, end: getEndOfDay(end) };
+    }
+    case 'thisMonth': {
+      const start = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+      const end = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0);
+      return { start: normalizeToStartOfDay(start), end: getEndOfDay(end) };
+    }
+    case 'custom': {
+      if (!customRange || !customRange.start || !customRange.end) return null;
+      const start = normalizeToStartOfDay(customRange.start);
+      const end = getEndOfDay(customRange.end);
+      if (!start || !end || start > end) return null;
+      return { start, end };
+    }
+    default:
+      return null;
+  }
+};
+
+const filterTransactionsByRange = (transactions, rangeId, customRange) => {
+  const bounds = getRangeBounds(rangeId, customRange);
+  if (!bounds) return [...transactions];
+
+  return transactions.filter((transaction) => {
+    const candidate = transaction.date || transaction.dateValue;
+    if (!candidate) return false;
+    const timestamp = new Date(candidate);
+    if (Number.isNaN(timestamp.getTime())) return false;
+    return timestamp >= bounds.start && timestamp <= bounds.end;
+  });
+};
+
 const TransactionList = ({
   transactions = [],
   onAddTransaction,
@@ -53,22 +129,38 @@ const TransactionList = ({
   onEditTransaction,
   onDeleteTransaction,
 }) => {
-  const [groupBy, setGroupBy] = useState('date');
+  const [selectedRange, setSelectedRange] = useState('thisMonth');
+  const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
 
-  const groupedTransactions = useMemo(() => {
-    if (!transactions.length) return [];
+  const customRangeError =
+    selectedRange === 'custom' &&
+    customRange.start &&
+    customRange.end &&
+    new Date(customRange.start) > new Date(customRange.end);
 
-    const sorted = [...transactions];
-    if (groupBy === 'date') {
-      sorted.sort((a, b) => getSortTimestamp(b) - getSortTimestamp(a));
-    } else {
-      sorted.sort((a, b) => (a.category || '').localeCompare(b.category || '', 'vi', { sensitivity: 'base' }));
+  const shouldApplyCustomRange =
+    selectedRange === 'custom' &&
+    customRange.start &&
+    customRange.end &&
+    !customRangeError;
+
+  const rangeFilteredTransactions = useMemo(() => {
+    if (selectedRange === 'custom' && !shouldApplyCustomRange) {
+      return [];
     }
+    return filterTransactionsByRange(transactions, selectedRange, shouldApplyCustomRange ? customRange : null);
+  }, [transactions, selectedRange, customRange, shouldApplyCustomRange]);
+
+  const groupedTransactions = useMemo(() => {
+    if (!rangeFilteredTransactions.length) return [];
+
+    const sorted = [...rangeFilteredTransactions];
+    sorted.sort((a, b) => getSortTimestamp(b) - getSortTimestamp(a));
 
     const map = new Map();
     sorted.forEach((transaction) => {
-      const label = groupBy === 'date' ? getDateLabel(transaction) : transaction.category || 'Khác';
+      const label = getDateLabel(transaction);
       if (!map.has(label)) {
         map.set(label, []);
       }
@@ -76,7 +168,10 @@ const TransactionList = ({
     });
 
     return Array.from(map.entries());
-  }, [transactions, groupBy]);
+  }, [rangeFilteredTransactions]);
+
+  const selectedRangeMeta = RANGE_OPTIONS.find((option) => option.id === selectedRange);
+  const showEmptyState = groupedTransactions.length === 0 && !(selectedRange === 'custom' && !shouldApplyCustomRange);
 
   const handleFabClick = () => {
     setIsSpeedDialOpen((prev) => !prev);
@@ -115,33 +210,71 @@ const TransactionList = ({
   return (
     <div className="relative">
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-gray-400 font-semibold">Transactions</p>
             <h3 className="text-xl font-semibold text-gray-900 mt-1">Recent Activity</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Hiển thị {selectedRangeMeta ? selectedRangeMeta.label.toLowerCase() : 'mọi giao dịch'}
+            </p>
           </div>
-          <div className="flex items-center gap-2 bg-gray-100 rounded-full px-1 py-1 text-xs font-medium text-gray-600">
-            <span className="hidden sm:inline px-2 tracking-wide uppercase text-[11px] text-gray-500">Phân loại</span>
-            {[
-              { id: 'date', label: 'Theo ngày' },
-              { id: 'category', label: 'Theo danh mục' },
-            ].map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setGroupBy(option.id)}
-                className={`px-3 py-1.5 rounded-full transition-colors ${
-                  groupBy === option.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500'
-                }`}
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline text-[11px] font-semibold uppercase tracking-[0.25em] text-gray-400">
+              Khoảng thời gian
+            </span>
+            <div className="relative">
+              <CalendarRange size={16} className="text-indigo-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <select
+                value={selectedRange}
+                onChange={(event) => setSelectedRange(event.target.value)}
+                className="appearance-none rounded-full border border-gray-200 bg-white pl-9 pr-9 py-2 text-sm font-medium text-gray-700 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               >
-                {option.label}
-              </button>
-            ))}
+                {RANGE_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
         </div>
 
+        {selectedRange === 'custom' && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col text-xs font-semibold uppercase tracking-[0.25em] text-gray-400">
+              Từ ngày
+              <input
+                type="date"
+                value={customRange.start}
+                onChange={(event) => setCustomRange((prev) => ({ ...prev, start: event.target.value }))}
+                className="mt-2 h-11 rounded-2xl border border-gray-200 px-3 text-sm font-medium text-gray-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              />
+            </label>
+            <label className="flex flex-col text-xs font-semibold uppercase tracking-[0.25em] text-gray-400">
+              Đến ngày
+              <input
+                type="date"
+                value={customRange.end}
+                onChange={(event) => setCustomRange((prev) => ({ ...prev, end: event.target.value }))}
+                className="mt-2 h-11 rounded-2xl border border-gray-200 px-3 text-sm font-medium text-gray-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              />
+            </label>
+            {customRangeError && (
+              <p className="sm:col-span-2 text-xs text-rose-600">
+                Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.
+              </p>
+            )}
+            {!customRangeError && (!customRange.start || !customRange.end) && (
+              <p className="sm:col-span-2 text-xs text-gray-500">
+                Chọn đầy đủ ngày bắt đầu và kết thúc để áp dụng bộ lọc.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="mt-6 space-y-6" role="list">
-          {groupedTransactions.length === 0 && (
+          {showEmptyState && (
             <p className="text-sm text-gray-500">Không có giao dịch nào gần đây.</p>
           )}
 

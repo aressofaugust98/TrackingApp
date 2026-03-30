@@ -35,7 +35,6 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
 
   if (response.status === 401) {
     localStorage.removeItem('accessToken');
-    window.location.reload();
     throw new Error('Unauthorized. Please log in again.');
   }
 

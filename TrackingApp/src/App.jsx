@@ -23,12 +23,16 @@ function App() {
       setWallets(data)
     } catch (error) {
       console.error('Failed to fetch wallets:', error)
+      if ((error?.message || '').toLowerCase().includes('unauthorized')) {
+        setIsAuthenticated(false)
+      }
     }
   }
 
   useEffect(() => {
+    if (!isAuthenticated) return
     fetchWallets()
-  }, [])
+  }, [isAuthenticated])
 
   const handleLoginSuccess = () => {
     setAppSection('dashboard')

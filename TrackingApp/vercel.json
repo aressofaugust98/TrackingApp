@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://monio-docker-image.onrender.com/$1"
+    },
+    {
       "source": "/ocr-api/(.*)",
       "destination": "https://purpose-floating-tax-replacing.trycloudflare.com/$1"
     },

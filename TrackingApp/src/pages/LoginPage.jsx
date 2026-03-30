@@ -40,6 +40,8 @@ const LoginPage = ({ onRegister, onForgot, onSignIn, onLoginSuccess }) => {
 
       if (resolvedToken) {
         localStorage.setItem('accessToken', resolvedToken);
+      } else {
+        throw new Error('Đăng nhập thành công nhưng không nhận được access token từ API.');
       }
 
       if (onLoginSuccess) onLoginSuccess(response);

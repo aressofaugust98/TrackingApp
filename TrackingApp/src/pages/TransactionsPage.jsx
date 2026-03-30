@@ -3,6 +3,7 @@ import TransactionList from '../components/TransactionList';
 import TransactionForm from '../components/TransactionForm';
 import InAppScanner from '../components/InAppScanner';
 import { SAMPLE_TRANSACTIONS } from '../constants/sampleTransactions';
+import { extractInvoice } from '../services/ocrService';
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -11,22 +12,19 @@ const generateId = () => {
   return `txn-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 };
 
-const mockProcessImage = async (file) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (!file) {
-        reject(new Error('Missing image file'));
-        return;
-      }
+const mapExtractedInvoiceToPrefill = (ocrResponse) => {
+  const extracted = ocrResponse?.extracted || {};
+  const localDateTime = typeof extracted.LocalDateTime === 'string' ? extracted.LocalDateTime.trim() : '';
+  const [datePart = '', timePartRaw = ''] = localDateTime.split(' ');
+  const timePart = timePartRaw ? timePartRaw.slice(0, 5) : '';
 
-      resolve({
-        type: 'Chi tiêu',
-        category: 'Food',
-        amount: 150000,
-        date: '2026-03-28T20:59',
-      });
-    }, 2000);
-  });
+  return {
+    amount: extracted.Total ?? '',
+    date: datePart,
+    time: timePart,
+    type: 'expense',
+    note: `Quét tự động - ${extracted.Category || ''}`.trim(),
+  };
 };
 
 const TransactionsPage = ({ wallets = [], transactions: controlledTransactions, onTransactionsChange }) => {
@@ -36,7 +34,7 @@ const TransactionsPage = ({ wallets = [], transactions: controlledTransactions, 
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
 
   const updateTransactions = (updater) => {
@@ -101,20 +99,25 @@ const TransactionsPage = ({ wallets = [], transactions: controlledTransactions, 
     setIsScannerOpen(true);
   };
 
-  const handleImageCaptured = async (file) => {
-    setIsScannerOpen(false);
-    setIsProcessing(true);
+  const handleImageCaptured = async (imageBlob) => {
+    setIsExtracting(true);
 
     try {
-      const data = await mockProcessImage(file);
-      setPrefilledData(data);
+      const extractedData = await extractInvoice(imageBlob);
+      console.log('EXTRACTED INVOICE DATA:', extractedData);
+      setPrefilledData(mapExtractedInvoiceToPrefill(extractedData));
       setEditingTransaction(null);
+      setIsScannerOpen(false);
       setFormOpen(true);
     } catch (error) {
       console.error('AI processing failed', error);
-      alert('Lỗi phân tích hóa đơn!');
+      alert('Lỗi phân tích hóa đơn, vui lòng nhập thủ công');
+      setPrefilledData(null);
+      setEditingTransaction(null);
+      setIsScannerOpen(false);
+      setFormOpen(true);
     } finally {
-      setIsProcessing(false);
+      setIsExtracting(false);
     }
   };
 
@@ -175,11 +178,11 @@ const TransactionsPage = ({ wallets = [], transactions: controlledTransactions, 
         />
       )}
 
-      {isProcessing && (
+      {isExtracting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/55 backdrop-blur-sm">
           <div className="rounded-2xl bg-white px-6 py-5 text-center shadow-2xl">
-            <p className="text-sm font-semibold text-gray-900">Dang xu ly anh...</p>
-            <p className="mt-1 text-xs text-gray-500">AI dang trich xuat so tien, danh muc va thoi gian giao dich.</p>
+            <p className="text-sm font-semibold text-gray-900">Đang nhờ AI đọc hóa đơn...</p>
+            <p className="mt-1 text-xs text-gray-500">AI đang trích xuất số tiền, danh mục và thời gian giao dịch.</p>
           </div>
         </div>
       )}

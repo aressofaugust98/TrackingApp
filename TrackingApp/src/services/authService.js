@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_BASE_URL;
+import { getApiUrl } from '../utils/apiConfig';
 
 const parseResponse = async (response) => {
   const contentType = response.headers.get('content-type') || '';
@@ -22,7 +22,7 @@ const buildError = (status, statusText, errorBody) => {
 };
 
 export const signUp = async (userData) => {
-  const response = await fetch(`${API_URL}/auth/sign-up`, {
+  const response = await fetch(getApiUrl('/auth/sign-up'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ export const signUp = async (userData) => {
 };
 
 export const logIn = async (credentials) => {
-  const response = await fetch(`${API_URL}/auth/log-in`, {
+  const response = await fetch(getApiUrl('/auth/log-in'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -58,7 +58,7 @@ export const logIn = async (credentials) => {
 };
 
 export const logOut = async (token) => {
-  const response = await fetch(`${API_URL}/auth/log-out`, {
+  const response = await fetch(getApiUrl('/auth/log-out'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

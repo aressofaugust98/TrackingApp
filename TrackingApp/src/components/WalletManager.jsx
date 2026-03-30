@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Wallet } from 'lucide-react';
+import { Edit2, Plus, Trash2, Wallet } from 'lucide-react';
+import { createWallet, deleteWallet, updateWallet } from '../services/walletService';
 
 const formatVND = (amount) => {
   if (!amount && amount !== 0) return '0 ₫';
@@ -14,7 +15,7 @@ const formatVND = (amount) => {
     .trim();
 };
 
-const WalletManager = ({ wallets = [], onAddWallet }) => {
+const WalletManager = ({ wallets = [], onRefreshWallets }) => {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -28,7 +29,7 @@ const WalletManager = ({ wallets = [], onAddWallet }) => {
     setError('');
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!formData.name.trim()) {
@@ -47,15 +48,63 @@ const WalletManager = ({ wallets = [], onAddWallet }) => {
       return;
     }
 
-    if (typeof onAddWallet === 'function') {
-      onAddWallet({
+    try {
+      await createWallet({
         name: formData.name.trim(),
-        initialBalance: balance,
+        balance: Number(formData.initialBalance),
+        currency: 'VND',
       });
+
+      if (typeof onRefreshWallets === 'function') {
+        await onRefreshWallets();
+      }
+
+      setFormData({ name: '', initialBalance: '' });
+      setError('');
+      setShowForm(false);
+    } catch (apiError) {
+      console.error('Failed to create wallet:', apiError);
+      alert('Không thể tạo ví. Vui lòng thử lại.');
+    }
+  };
+
+  const handleDeleteWallet = async (walletId) => {
+    const shouldDelete = window.confirm('Bạn có chắc chắn muốn xoá ví này không?');
+    if (!shouldDelete) {
+      return;
     }
 
-    setFormData({ name: '', initialBalance: '' });
-    setShowForm(false);
+    try {
+      await deleteWallet(walletId);
+      if (typeof onRefreshWallets === 'function') {
+        await onRefreshWallets();
+      }
+    } catch (apiError) {
+      console.error('Failed to delete wallet:', apiError);
+      alert('Không thể xoá ví. Vui lòng thử lại.');
+    }
+  };
+
+  const handleEditWallet = async (wallet) => {
+    const newName = window.prompt('Nhập tên ví mới', wallet.name || '');
+
+    if (!newName || !newName.trim()) {
+      return;
+    }
+
+    try {
+      await updateWallet(wallet.id, {
+        name: newName.trim(),
+        currency: 'VND',
+      });
+
+      if (typeof onRefreshWallets === 'function') {
+        await onRefreshWallets();
+      }
+    } catch (apiError) {
+      console.error('Failed to update wallet:', apiError);
+      alert('Không thể cập nhật ví. Vui lòng thử lại.');
+    }
   };
 
   const handleCancel = () => {
@@ -148,6 +197,24 @@ const WalletManager = ({ wallets = [], onAddWallet }) => {
                 <p className="text-lg font-semibold text-gray-900">
                   {formatVND(wallet.balance)}
                 </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleEditWallet(wallet)}
+                  className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                  title="Sửa ví"
+                >
+                  <Edit2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteWallet(wallet.id)}
+                  className="rounded-lg p-2 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  title="Xoá ví"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
             </div>
           ))

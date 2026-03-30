@@ -29,8 +29,17 @@ const LoginPage = ({ onRegister, onForgot, onSignIn, onLoginSuccess }) => {
       });
 
       console.log('LOGIN RESPONSE:', response);
-      if (response?.token) {
-        localStorage.setItem('accessToken', response.token);
+      const resolvedToken =
+        response?.accessToken ||
+        response?.token ||
+        response?.data?.accessToken ||
+        response?.data?.token ||
+        response?.result?.accessToken ||
+        response?.result?.token ||
+        '';
+
+      if (resolvedToken) {
+        localStorage.setItem('accessToken', resolvedToken);
       }
 
       if (onLoginSuccess) onLoginSuccess(response);

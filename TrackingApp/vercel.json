@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/ocr-api/(.*)",
+      "destination": "https://purpose-floating-tax-replacing.trycloudflare.com/$1"
+    },
+    {
       "source": "/((?!assets|favicon.ico).*)",
       "destination": "/index.html"
     }

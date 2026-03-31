@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { getAllCategories } from '../services/categoryService';
+import { getCategoriesByType } from '../services/categoryService';
 
 const createDefaultValues = () => {
   const now = new Date();
@@ -64,6 +64,7 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
   const [values, setValues] = useState(createDefaultValues());
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState('');
+  const type = values.type;
   const isTransferWithSameWallets =
     values.type === 'transfer' &&
     values.sourceWallet &&
@@ -94,16 +95,24 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
 
   useEffect(() => {
     const fetchCategories = async () => {
+      if (type === 'transfer') {
+        setCategories([]);
+        return;
+      }
+
+      const mappedType = type === 'expense' ? 'EXPENSE' : 'INCOME';
+
       try {
-        const data = await getAllCategories();
+        const data = await getCategoriesByType(mappedType);
         setCategories(Array.isArray(data) ? data : []);
       } catch (fetchError) {
         console.error('Failed to fetch categories:', fetchError);
+        setCategories([]);
       }
     };
 
     fetchCategories();
-  }, []);
+  }, [type]);
 
   const hasCategoryType = categories.some((category) => typeof category?.type === 'string' && category.type.trim());
   const visibleCategories = hasCategoryType
@@ -112,6 +121,19 @@ const TransactionForm = ({ open, onClose, onSubmit, initialData, prefilledData =
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+
+    if (name === 'type') {
+      setValues((prev) => ({
+        ...prev,
+        [name]: value,
+        category: '',
+      }));
+      if (error) {
+        setError('');
+      }
+      return;
+    }
+
     setValues((prev) => ({ ...prev, [name]: value }));
     if (error) {
       setError('');

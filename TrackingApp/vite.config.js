@@ -9,6 +9,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    resolve: {
+      alias: {
+        '@': '/src',
+      },
+    },
     server: {
       proxy: {
         '/api': {

@@ -8,11 +8,48 @@ const currencyFormatter = new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 0,
 });
 
+const getNormalizedType = (transaction) => String(transaction?.type || '').toUpperCase();
+
+const getCategoryName = (transaction) => {
+  if (typeof transaction?.category === 'string') {
+    return transaction.category;
+  }
+  return transaction?.category?.name || 'Danh mục';
+};
+
+const getWalletName = (transaction) => {
+  const sourceWallet = transaction?.wallet?.name;
+  const destinationWallet = transaction?.destinationWallet?.name;
+
+  if (getNormalizedType(transaction) === 'TRANSFER' && sourceWallet && destinationWallet) {
+    return `${sourceWallet} -> ${destinationWallet}`;
+  }
+
+  return sourceWallet || destinationWallet || '';
+};
+
+const getTransactionDate = (transaction) => {
+  const candidate = transaction?.createdAt || transaction?.date || transaction?.dateValue;
+  if (!candidate) return null;
+  const normalized = String(candidate).replace(' ', 'T');
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getTransactionTimeLabel = (transaction) => {
+  if (transaction?.time) return transaction.time;
+  if (!transaction?.createdAt) return '';
+
+  const parts = String(transaction.createdAt).split(' ');
+  if (parts.length < 2) return '';
+  return parts[1].slice(0, 5);
+};
+
 const formatAmount = (transaction) => {
   if (typeof transaction.amount === 'number' && !Number.isNaN(transaction.amount)) {
     const absolute = Math.abs(transaction.amount);
     const formatted = currencyFormatter.format(absolute);
-    return transaction.type === 'income' ? `+${formatted}` : `-${formatted}`;
+    return getNormalizedType(transaction) === 'INCOME' ? `+${formatted}` : `-${formatted}`;
   }
   return transaction.amount || '--';
 };
@@ -28,7 +65,7 @@ const normalizeToStartOfDay = (value) => {
 const getDateLabel = (transaction) => {
   if (transaction.dateLabel) return transaction.dateLabel;
   const today = normalizeToStartOfDay(new Date());
-  const transactionDate = normalizeToStartOfDay(transaction.date || transaction.dateValue);
+  const transactionDate = normalizeToStartOfDay(getTransactionDate(transaction));
   if (!today || !transactionDate) return 'Earlier';
 
   const diffDays = Math.round((today.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -39,9 +76,9 @@ const getDateLabel = (transaction) => {
 };
 
 const getSortTimestamp = (transaction) => {
-  const candidate = transaction.date || transaction.dateValue;
-  if (!candidate) return 0;
-  const timestamp = new Date(candidate).getTime();
+  const date = getTransactionDate(transaction);
+  if (!date) return 0;
+  const timestamp = date.getTime();
   return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
@@ -113,22 +150,22 @@ const filterTransactionsByRange = (transactions, rangeId, customRange) => {
   if (!bounds) return [...transactions];
 
   return transactions.filter((transaction) => {
-    const candidate = transaction.date || transaction.dateValue;
-    if (!candidate) return false;
-    const timestamp = new Date(candidate);
+    const timestamp = getTransactionDate(transaction);
+    if (!timestamp) return false;
     if (Number.isNaN(timestamp.getTime())) return false;
     return timestamp >= bounds.start && timestamp <= bounds.end;
   });
 };
 
 const TransactionList = ({
-  transactions = [],
+  transactions,
   onAddTransaction,
   onOpenManualForm,
   onOpenScanner,
-  onEditTransaction,
-  onDeleteTransaction,
+  onEdit,
+  onDelete,
 }) => {
+  const transactionItems = Array.isArray(transactions) ? transactions : [];
   const [selectedRange, setSelectedRange] = useState('thisMonth');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
@@ -149,8 +186,8 @@ const TransactionList = ({
     if (selectedRange === 'custom' && !shouldApplyCustomRange) {
       return [];
     }
-    return filterTransactionsByRange(transactions, selectedRange, shouldApplyCustomRange ? customRange : null);
-  }, [transactions, selectedRange, customRange, shouldApplyCustomRange]);
+    return filterTransactionsByRange(transactionItems, selectedRange, shouldApplyCustomRange ? customRange : null);
+  }, [transactionItems, selectedRange, customRange, shouldApplyCustomRange]);
 
   const groupedTransactions = useMemo(() => {
     if (!rangeFilteredTransactions.length) return [];
@@ -171,7 +208,7 @@ const TransactionList = ({
   }, [rangeFilteredTransactions]);
 
   const selectedRangeMeta = RANGE_OPTIONS.find((option) => option.id === selectedRange);
-  const showEmptyState = groupedTransactions.length === 0 && !(selectedRange === 'custom' && !shouldApplyCustomRange);
+  const showFallbackState = transactionItems.length === 0;
 
   const handleFabClick = () => {
     setIsSpeedDialOpen((prev) => !prev);
@@ -196,14 +233,14 @@ const TransactionList = ({
   };
 
   const handleEdit = (transaction) => {
-    if (typeof onEditTransaction === 'function') {
-      onEditTransaction(transaction);
+    if (typeof onEdit === 'function') {
+      onEdit(transaction);
     }
   };
 
   const handleDelete = (transaction) => {
-    if (typeof onDeleteTransaction === 'function') {
-      onDeleteTransaction(transaction);
+    if (typeof onDelete === 'function') {
+      onDelete(transaction.id);
     }
   };
 
@@ -274,18 +311,19 @@ const TransactionList = ({
         )}
 
         <div className="mt-6 space-y-6" role="list">
-          {showEmptyState && (
-            <p className="text-sm text-gray-500">Không có giao dịch nào gần đây.</p>
-          )}
+          {showFallbackState && <div className="text-center py-8 text-gray-500">Chưa có giao dịch nào</div>}
 
-          {groupedTransactions.map(([label, items]) => (
+          {!showFallbackState && groupedTransactions.map(([label, items]) => (
             <div key={label} className="space-y-3" role="listitem">
               <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-gray-400">{label}</p>
               <div className="overflow-hidden rounded-2xl border border-gray-100 divide-y divide-gray-100">
                 {items.map((transaction) => {
-                  const meta = CATEGORY_STYLES[transaction.category] || CATEGORY_FALLBACK;
+                  const categoryName = getCategoryName(transaction);
+                  const walletName = getWalletName(transaction);
+                  const detailLabel = [walletName, transaction.note].filter(Boolean).join(' • ');
+                  const meta = CATEGORY_STYLES[categoryName] || CATEGORY_FALLBACK;
                   const Icon = meta.icon;
-                  const amountColor = transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600';
+                  const amountColor = getNormalizedType(transaction) === 'INCOME' ? 'text-emerald-600' : 'text-rose-600';
                   return (
                     <div
                       key={transaction.id}
@@ -299,15 +337,15 @@ const TransactionList = ({
                           <Icon size={22} />
                         </span>
                         <div className="truncate">
-                          <p className="text-sm font-semibold text-gray-900">{transaction.category}</p>
-                          <p className="text-xs text-gray-500 truncate">{transaction.note || 'Không có ghi chú'}</p>
+                          <p className="text-sm font-semibold text-gray-900">{transaction.category?.name || categoryName}</p>
+                          <p className="text-xs text-gray-500 truncate">{detailLabel || 'Không có ghi chú'}</p>
                         </div>
                       </div>
                       <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-center">
                         <div className="text-right min-w-25">
                           <p className={`text-sm font-semibold ${amountColor}`}>{formatAmount(transaction)}</p>
-                          {transaction.time && (
-                            <p className="text-[11px] uppercase tracking-wide text-gray-400">{transaction.time}</p>
+                          {getTransactionTimeLabel(transaction) && (
+                            <p className="text-[11px] uppercase tracking-wide text-gray-400">{getTransactionTimeLabel(transaction)}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-2">

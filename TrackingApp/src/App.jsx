@@ -6,7 +6,7 @@ import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import TransactionsPage from './pages/TransactionsPage'
 import ReportsPage from './pages/ReportsPage'
-import { SAMPLE_TRANSACTIONS } from './constants/sampleTransactions'
+import { getTransactions } from './services/transactionService'
 import { getAllWallets } from './services/walletService'
 
 function App() {
@@ -15,7 +15,14 @@ function App() {
   )
   const [appSection, setAppSection] = useState('dashboard')
   const [wallets, setWallets] = useState([])
-  const [transactions, setTransactions] = useState(SAMPLE_TRANSACTIONS)
+  const [transactions, setTransactions] = useState([])
+
+  const formatDate = (date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
 
   const fetchWallets = async () => {
     try {
@@ -29,9 +36,37 @@ function App() {
     }
   }
 
+  const fetchTransactions = async () => {
+    try {
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      const data = await getTransactions(formatDate(startOfMonth), formatDate(endOfMonth))
+
+      if (Array.isArray(data)) {
+        setTransactions(data)
+        return
+      }
+
+      if (Array.isArray(data?.transactions)) {
+        setTransactions(data.transactions)
+        return
+      }
+
+      setTransactions([])
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error)
+      if ((error?.message || '').toLowerCase().includes('unauthorized')) {
+        setIsAuthenticated(false)
+      }
+      setTransactions([])
+    }
+  }
+
   useEffect(() => {
     if (!isAuthenticated) return
     fetchWallets()
+    fetchTransactions()
   }, [isAuthenticated])
 
   const handleLoginSuccess = () => {
@@ -92,7 +127,13 @@ function App() {
         )
       case 'dashboard':
       default:
-        return <Dashboard wallets={wallets} />
+        return (
+          <Dashboard
+            wallets={wallets}
+            onRefreshTransactions={fetchTransactions}
+            onRefreshWallets={fetchWallets}
+          />
+        )
     }
   }
 

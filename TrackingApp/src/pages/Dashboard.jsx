@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Camera, Plus } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -11,8 +11,10 @@ import {
 } from 'recharts';
 import BalanceCard from '../components/BalanceCard';
 import InAppScanner from '../components/InAppScanner';
+import RecentTransactions from '../components/RecentTransactions';
 import TransactionForm from '../components/TransactionForm';
 import { extractInvoice } from '../services/ocrService';
+import { createTransaction, createTransfer, getTransactions } from '../services/transactionService.js';
 
 const chartData = [
   { day: 'T2', spending: 120 },
@@ -39,19 +41,53 @@ const mapExtractedInvoiceToPrefill = (ocrResponse) => {
   };
 };
 
-const submitToAPI = async (payload) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, payload });
-    }, 1000);
-  });
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
-const Dashboard = ({ wallets = [] }) => {
+const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+
+  const fetchTransactions = async () => {
+    try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const data = await getTransactions(formatDate(startOfMonth), formatDate(endOfMonth));
+
+      if (Array.isArray(data)) {
+        setTransactions(data);
+        return;
+      }
+
+      if (Array.isArray(data?.transactions)) {
+        setTransactions(data.transactions);
+        return;
+      }
+
+      setTransactions([]);
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+      setTransactions([]);
+    }
+  };
+
+  const fetchWallets = async () => {
+    if (typeof onRefreshWallets === 'function') {
+      await onRefreshWallets();
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
 
   const handleOpenManualModal = () => {
     setPrefilledData(null);
@@ -84,11 +120,42 @@ const Dashboard = ({ wallets = [] }) => {
   };
 
   const handleSubmitTransaction = async (data) => {
-    await submitToAPI(data);
-    console.log('PAYLOAD SENT TO API:', data);
-    alert('Giao dịch thành công!');
-    setIsModalOpen(false);
-    setPrefilledData(null);
+    try {
+      const createdAt = new Date(`${data.date}T${data.time || '00:00'}:00`).toISOString();
+
+      if (data.type === 'transfer') {
+        await createTransfer({
+          amount: Number(data.amount),
+          note: data.note,
+          createdAt,
+          sourceWalletId: Number(data.sourceWallet),
+          destinationWalletId: Number(data.destinationWallet),
+        });
+      } else {
+        await createTransaction({
+          amount: Number(data.amount),
+          note: data.note,
+          type: data.type.toUpperCase(),
+          createdAt,
+          categoryId: Number(data.category),
+          walletId: Number(data.wallet),
+        });
+      }
+
+      alert('Giao dịch thành công!');
+      setIsModalOpen(false);
+      setPrefilledData(null);
+
+      await fetchTransactions();
+      await fetchWallets();
+
+      if (typeof onRefreshTransactions === 'function') {
+        await onRefreshTransactions();
+      }
+    } catch (error) {
+      console.error('Failed to create transaction:', error);
+      alert('Tạo giao dịch thất bại. Vui lòng thử lại.');
+    }
   };
 
   return (
@@ -119,6 +186,8 @@ const Dashboard = ({ wallets = [] }) => {
       </div>
 
       <BalanceCard balance="25.430.000₫" income="+12.500.000₫" expense="-3.850.000₫" />
+
+  <RecentTransactions transactions={transactions} />
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">

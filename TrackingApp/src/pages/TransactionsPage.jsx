@@ -1,15 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import TransactionList from '../components/TransactionList';
 import TransactionForm from '../components/TransactionForm';
 import InAppScanner from '../components/InAppScanner';
-import { SAMPLE_TRANSACTIONS } from '../constants/sampleTransactions';
 import { extractInvoice } from '../services/ocrService';
+import { getTransactions, createTransaction, createTransfer, deleteTransaction } from '@/services/transactionService';
 
-const generateId = () => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `txn-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 const mapExtractedInvoiceToPrefill = (ocrResponse) => {
@@ -27,29 +27,45 @@ const mapExtractedInvoiceToPrefill = (ocrResponse) => {
   };
 };
 
-const TransactionsPage = ({ wallets = [], transactions: controlledTransactions, onTransactionsChange }) => {
-  const isControlled = Array.isArray(controlledTransactions);
-  const [internalTransactions, setInternalTransactions] = useState(SAMPLE_TRANSACTIONS);
-  const transactions = isControlled ? controlledTransactions : internalTransactions;
+const TransactionsPage = ({ wallets = [] }) => {
+  const [transactions, setTransactions] = useState([]);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
 
-  const updateTransactions = (updater) => {
-    if (typeof onTransactionsChange === 'function') {
-      onTransactionsChange(updater);
-    }
-    if (!isControlled) {
-      setInternalTransactions((prev) => (typeof updater === 'function' ? updater(prev) : updater));
+  const loadData = async () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const startDate = formatDate(startOfMonth);
+    const endDate = formatDate(endOfMonth);
+
+    try {
+      const data = await getTransactions(startDate, endDate);
+      if (Array.isArray(data)) {
+        setTransactions(data);
+      } else if (Array.isArray(data?.transactions)) {
+        setTransactions(data.transactions);
+      } else {
+        setTransactions([]);
+      }
+    } catch (error) {
+      console.error('Failed to load transactions:', error);
+      setTransactions([]);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const summary = useMemo(() => {
     return transactions.reduce(
       (acc, transaction) => {
-        if (transaction.type === 'income') {
+        const normalizedType = String(transaction.type || '').toLowerCase();
+        if (normalizedType === 'income') {
           acc.income += transaction.amount;
         } else {
           acc.expense += transaction.amount;
@@ -72,27 +88,51 @@ const TransactionsPage = ({ wallets = [], transactions: controlledTransactions, 
     setPrefilledData(null);
   };
 
-  const handleSaveTransaction = (payload) => {
-    if (editingTransaction) {
-      updateTransactions((prev) =>
-        prev.map((item) => (item.id === editingTransaction.id ? { ...item, ...payload } : item))
-      );
-    } else {
-      updateTransactions((prev) => [
-        {
-          id: generateId(),
-          ...payload,
-        },
-        ...prev,
-      ]);
+  const handleSaveTransaction = async (data) => {
+    try {
+      const createdAt = new Date(`${data.date}T${data.time || '00:00'}:00`).toISOString();
+
+      if (data.type === 'transfer') {
+        await createTransfer({
+          amount: Number(data.amount),
+          note: data.note,
+          createdAt,
+          sourceWalletId: Number(data.sourceWallet),
+          destinationWalletId: Number(data.destinationWallet),
+        });
+      } else {
+        await createTransaction({
+          amount: Number(data.amount),
+          note: data.note,
+          type: String(data.type).toUpperCase(),
+          createdAt,
+          categoryId: Number(data.category),
+          walletId: Number(data.wallet),
+        });
+      }
+
+      alert('Giao dịch thành công!');
+      setFormOpen(false);
+      setEditingTransaction(null);
+      setPrefilledData(null);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to create transaction:', error);
+      alert('Tạo giao dịch thất bại. Vui lòng thử lại.');
     }
-    handleCloseForm();
   };
 
-  const handleDeleteTransaction = (transaction) => {
+  const handleDeleteTransaction = async (id) => {
     const confirmed = window.confirm('Bạn có chắc muốn xoá giao dịch này?');
     if (!confirmed) return;
-    updateTransactions((prev) => prev.filter((item) => item.id !== transaction.id));
+
+    try {
+      await deleteTransaction(id);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+      alert('Xoá giao dịch thất bại. Vui lòng thử lại.');
+    }
   };
 
   const handleOpenScanner = () => {
@@ -157,8 +197,8 @@ const TransactionsPage = ({ wallets = [], transactions: controlledTransactions, 
           transactions={transactions}
           onOpenManualForm={() => handleOpenForm()}
           onOpenScanner={handleOpenScanner}
-          onEditTransaction={(transaction) => handleOpenForm(transaction)}
-          onDeleteTransaction={handleDeleteTransaction}
+          onEdit={(transaction) => handleOpenForm(transaction)}
+          onDelete={handleDeleteTransaction}
         />
       </div>
 

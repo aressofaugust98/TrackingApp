@@ -24,12 +24,15 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
     ...(options.headers || {}),
   };
 
+  const cache = typeof options.cache === 'undefined' ? 'no-store' : options.cache;
+
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
   const response = await fetch(url, {
     ...options,
+    cache,
     headers,
   });
 

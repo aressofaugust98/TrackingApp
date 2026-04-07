@@ -49,6 +49,20 @@ export const updateTransaction = async (id, data) => {
     throw await buildError(response, 'Failed to update transaction');
   }
 
+  if (response.status === 204) {
+    return null;
+  }
+
+  const contentLength = response.headers.get('content-length');
+  if (contentLength === '0') {
+    return null;
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return null;
+  }
+
   return await response.json();
 };
 
@@ -60,6 +74,20 @@ export const deleteTransaction = async (id) => {
 
   if (!response.ok) {
     throw await buildError(response, 'Failed to delete transaction');
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  const contentLength = response.headers.get('content-length');
+  if (contentLength === '0') {
+    return null;
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return null;
   }
 
   return await response.json();

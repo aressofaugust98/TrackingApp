@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Camera, Plus } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -15,16 +15,6 @@ import RecentTransactions from '../components/RecentTransactions';
 import TransactionForm from '../components/TransactionForm';
 import { extractInvoice } from '../services/ocrService';
 import { createTransaction, createTransfer, getTransactions } from '../services/transactionService.js';
-
-const chartData = [
-  { day: 'T2', spending: 120 },
-  { day: 'T3', spending: 90 },
-  { day: 'T4', spending: 160 },
-  { day: 'T5', spending: 140 },
-  { day: 'T6', spending: 200 },
-  { day: 'T7', spending: 170 },
-  { day: 'CN', spending: 150 },
-];
 
 const mapExtractedInvoiceToPrefill = (ocrResponse) => {
   const extracted = ocrResponse?.extracted || {};
@@ -48,12 +38,87 @@ const formatDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const currencyFormatter = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  maximumFractionDigits: 0,
+});
+
+const formatCurrency = (value = 0) => currencyFormatter.format(Math.round(Number(value) || 0));
+
+const getNormalizedType = (transaction) => String(transaction?.type || '').trim().toUpperCase();
+
+const getTransactionDate = (createdAt) => {
+  if (!createdAt) return null;
+  const normalized = String(createdAt).replace(' ', 'T');
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getLastSevenDaysChartData = (transactions = []) => {
+  const today = new Date();
+  const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  const buckets = new Map();
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - offset);
+    const key = formatDate(date);
+    buckets.set(key, {
+      day: dayNames[date.getDay()],
+      spending: 0,
+    });
+  }
+
+  transactions.forEach((transaction) => {
+    if (getNormalizedType(transaction) !== 'EXPENSE') {
+      return;
+    }
+
+    const parsedDate = getTransactionDate(transaction.createdAt);
+    if (!parsedDate) return;
+
+    const key = formatDate(parsedDate);
+    const bucket = buckets.get(key);
+    if (!bucket) return;
+
+    bucket.spending += Math.abs(Number(transaction.amount) || 0);
+  });
+
+  return Array.from(buckets.values());
+};
+
 const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
   const [transactions, setTransactions] = useState([]);
+
+  const summary = useMemo(() => {
+    return transactions.reduce(
+      (acc, transaction) => {
+        const amount = Math.abs(Number(transaction.amount) || 0);
+        const normalizedType = getNormalizedType(transaction);
+
+        if (normalizedType === 'INCOME') {
+          acc.income += amount;
+        } else if (normalizedType === 'EXPENSE') {
+          acc.expense += amount;
+        }
+
+        return acc;
+      },
+      { income: 0, expense: 0 }
+    );
+  }, [transactions]);
+
+  const totalBalance = useMemo(
+    () => wallets.reduce((sum, wallet) => sum + (Number(wallet?.balance) || 0), 0),
+    [wallets]
+  );
+
+  const spendingChartData = useMemo(() => getLastSevenDaysChartData(transactions), [transactions]);
 
   const fetchTransactions = async () => {
     try {
@@ -185,9 +250,13 @@ const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) =>
         </div>
       </div>
 
-      <BalanceCard balance="25.430.000₫" income="+12.500.000₫" expense="-3.850.000₫" />
+      <BalanceCard
+        balance={formatCurrency(totalBalance)}
+        income={`+${formatCurrency(summary.income)}`}
+        expense={`-${formatCurrency(summary.expense)}`}
+      />
 
-  <RecentTransactions transactions={transactions} />
+      <RecentTransactions transactions={transactions} />
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
@@ -196,7 +265,7 @@ const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) =>
         </div>
         <div className="h-64 min-w-0">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <AreaChart data={spendingChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="spendingGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
@@ -209,7 +278,7 @@ const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) =>
               <Tooltip
                 contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}
                 labelStyle={{ color: '#111827', fontWeight: 600 }}
-                formatter={(value) => `${value}k`}
+                formatter={(value) => formatCurrency(value)}
               />
               <Area
                 type="monotone"

@@ -87,6 +87,14 @@ function App() {
     setTransactions((prev) => (typeof updater === 'function' ? updater(prev) : updater))
   }
 
+  const handleNavigate = (section) => {
+    setAppSection(section)
+
+    if (section === 'wallets') {
+      fetchWallets()
+    }
+  }
+
   if (!isAuthenticated) {
     return (
       <LoginPage
@@ -140,7 +148,7 @@ function App() {
   return (
     <AppLayout
       activeLink={appSection}
-      onNavigate={setAppSection}
+      onNavigate={handleNavigate}
       onLogoutSuccess={() => setIsAuthenticated(false)}
     >
       {renderSection()}

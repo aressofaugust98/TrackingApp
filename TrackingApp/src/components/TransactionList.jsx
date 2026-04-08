@@ -376,7 +376,7 @@ const TransactionList = ({
         </div>
       </div>
 
-      <div className="fixed bottom-24 right-4 md:bottom-10 md:right-10 z-40 flex flex-col items-end gap-3">
+      <div className="fixed bottom-24 right-4 md:bottom-28 md:right-10 z-40 flex flex-col items-end gap-3">
         <div
           className={`flex flex-col items-end gap-2 transition-all duration-300 ease-out ${
             isSpeedDialOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none'

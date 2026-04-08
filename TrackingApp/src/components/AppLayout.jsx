@@ -8,6 +8,7 @@ import {
   LogOut as LogOutIcon,
 } from 'lucide-react';
 import { logOut } from '../services/authService';
+import Chatbot from './Chatbot';
 
 const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate, onLogoutSuccess }) => {
   const [internalActiveLink, setInternalActiveLink] = useState('dashboard');
@@ -132,6 +133,8 @@ const AppLayout = ({ children, activeLink: controlledActiveLink, onNavigate, onL
           </button>
         </div>
       </nav>
+
+      <Chatbot />
     </div>
   );
 };

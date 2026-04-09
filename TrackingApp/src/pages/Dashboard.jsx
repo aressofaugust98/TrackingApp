@@ -122,22 +122,16 @@ const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) =>
 
   const fetchTransactions = async () => {
     try {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const data = await getTransactions(formatDate(startOfMonth), formatDate(endOfMonth));
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      
+      const formattedStart = formatDate(firstDay);
+      const formattedEnd = formatDate(lastDay);
 
-      if (Array.isArray(data)) {
-        setTransactions(data);
-        return;
-      }
-
-      if (Array.isArray(data?.transactions)) {
-        setTransactions(data.transactions);
-        return;
-      }
-
-      setTransactions([]);
+      // Fetch all transaction types (EXPENSE, INCOME, TRANSFER)
+      const data = await getTransactions(formattedStart, formattedEnd);
+      setTransactions(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
       setTransactions([]);

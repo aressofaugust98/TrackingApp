@@ -51,19 +51,17 @@ const TransactionsPage = ({ wallets = [] }) => {
   };
 
   const loadData = async (recentTransaction = null) => {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    const startDate = formatDate(startOfMonth);
-    const endDate = formatDate(endOfMonth);
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    // Using explicitly defined formatted dates or fallbacks
+    const formattedStart = formatDate(firstDay);
+    const formattedEnd = formatDate(lastDay);
 
     try {
-      const data = await getTransactions(startDate, endDate);
-      const fetchedTransactions = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.transactions)
-          ? data.transactions
-          : [];
+      const data = await getTransactions(formattedStart, formattedEnd);
+      const fetchedTransactions = Array.isArray(data) ? data : [];
 
       if (recentTransaction) {
         const alreadyIncluded = fetchedTransactions.some((transaction) => isSameTransaction(transaction, recentTransaction));

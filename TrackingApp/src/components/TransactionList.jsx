@@ -71,11 +71,18 @@ const getWalletName = (transaction) => {
 };
 
 const getTransactionDate = (transaction) => {
-  const candidate = transaction?.createdAt || transaction?.date || transaction?.dateValue;
-  if (!candidate) return null;
+  const candidate = transaction?.createdAt || transaction?.date || transaction?.dateValue || transaction?.transactionDate || transaction?.timestamp;
+  if (!candidate) {
+    console.warn('Transaction missing date field:', transaction);
+    return null;
+  }
   const normalized = `${String(candidate).trim().replace(' ', 'T')}Z`;
   const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? null : date;
+  if (Number.isNaN(date.getTime())) {
+    console.warn('Failed to parse date:', candidate, 'for transaction:', transaction);
+    return null;
+  }
+  return date;
 };
 
 const getTransactionTimeLabel = (transaction) => {
@@ -203,8 +210,9 @@ const filterTransactionsByRange = (transactions, rangeId, customRange) => {
 
   return transactions.filter((transaction) => {
     const timestamp = getTransactionDate(transaction);
-    if (!timestamp) return false;
-    if (Number.isNaN(timestamp.getTime())) return false;
+    // If timestamp is null, include the transaction anyway (it might be missing date data)
+    if (!timestamp) return true;
+    if (Number.isNaN(timestamp.getTime())) return true;
     return timestamp >= bounds.start && timestamp <= bounds.end;
   });
 };

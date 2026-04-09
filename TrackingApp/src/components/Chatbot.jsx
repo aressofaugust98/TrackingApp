@@ -131,7 +131,7 @@ const Chatbot = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+    <div className="fixed z-50 bottom-24 right-4 md:bottom-10 md:right-10 flex flex-col items-end gap-4">
       {isOpen ? (
         <div className="w-[min(92vw,24rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-slate-100 bg-linear-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-4 text-white">

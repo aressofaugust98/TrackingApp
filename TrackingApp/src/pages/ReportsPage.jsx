@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
+  PieChart,
+  Pie,
+  Cell,
   Tooltip,
-  CartesianGrid,
+  Legend,
 } from 'recharts';
 import {
   getReportByCategory,
@@ -19,6 +18,17 @@ const currencyFormatter = new Intl.NumberFormat('vi-VN', {
   currency: 'VND',
   maximumFractionDigits: 0,
 });
+
+const CHART_COLORS = [
+  '#4f46e5', // indigo
+  '#0d9488', // teal
+  '#e11d48', // rose
+  '#f59e0b', // amber
+  '#a855f7', // purple
+  '#06b6d4', // cyan
+  '#ec4899', // pink
+  '#6366f1', // slate indigo
+];
 
 const formatCurrency = (value = 0) => currencyFormatter.format(Math.round(Math.abs(value)) || 0);
 
@@ -157,16 +167,14 @@ const normalizeReportRows = (data, groupBy, walletLookup) => {
       const total = Number(
         item?.totalAmount ?? item?.total ?? item?.amount ?? item?.sum ?? item?.valueAmount ?? 0
       );
-      const count = Number(item?.count ?? item?.transactionCount ?? item?.transactionsCount ?? 0);
 
       return {
         value,
         label: resolveReportLabel(item, groupBy, walletLookup),
         total: Math.abs(Number.isNaN(total) ? 0 : total),
-        count: Number.isNaN(count) ? 0 : count,
       };
     })
-    .filter((item) => item.label || item.total || item.count);
+    .filter((item) => item.label || item.total);
 };
 
 const getSummaryMetric = (summary, typeKey, metricKeys) => {
@@ -212,8 +220,16 @@ const parseDateInputValue = (value) => {
 };
 
 const isTransactionInRange = (transaction, startDate, endDate) => {
-  const parsedDate = transaction?.createdAt ? new Date(String(transaction.createdAt).replace(' ', 'T')) : null;
-  if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
+  const dateString = transaction?.createdAt;
+  if (!dateString) return false;
+
+  // Force UTC parsing: "2026-04-09 03:07:00" -> "2026-04-09T03:07:00Z"
+  let utcString = String(dateString).trim().replace(' ', 'T');
+  if (!utcString.endsWith('Z')) {
+    utcString += 'Z';
+  }
+  const parsedDate = new Date(utcString);
+  if (Number.isNaN(parsedDate.getTime())) {
     return false;
   }
 
@@ -395,26 +411,9 @@ const ReportsPage = ({ wallets = [], transactions = [] }) => {
     [breakdown, reportSummary, transactionType]
   );
 
-  const totalCount = useMemo(
-    () =>
-      getSummaryMetric(reportSummary, normalizeReportType(transactionType), [
-        'totalCount',
-        'count',
-        'countTotal',
-        'transactionTotal',
-        'transactionCount',
-        'transactionsCount',
-        'totalTransactions',
-      ]) ?? breakdown.reduce((sum, item) => sum + (Number(item.count) || 0), 0),
-    [breakdown, reportSummary, transactionType]
-  );
 
-  const filteredTransactions = useMemo(() => {
-    if (selectedFilter === 'all') return { length: totalCount };
 
-    const selectedGroup = breakdown.find((item) => item.value === selectedFilter);
-    return { length: selectedGroup ? selectedGroup.count : 0 };
-  }, [breakdown, selectedFilter, totalCount]);
+
 
   const highlightedGroup = selectedFilter === 'all'
     ? breakdown[0] || null
@@ -534,14 +533,10 @@ const ReportsPage = ({ wallets = [], transactions = [] }) => {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">Tổng {transactionType === 'expense' ? 'chi tiêu' : 'thu nhập'}</p>
             <p className="mt-2 text-3xl font-bold text-gray-900">{formatCurrency(totalAmount)}</p>
-          </div>
-          <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Số giao dịch</p>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{filteredTransactions.length}</p>
           </div>
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">Nhóm dẫn đầu</p>
@@ -572,23 +567,23 @@ const ReportsPage = ({ wallets = [], transactions = [] }) => {
               Chưa có giao dịch phù hợp để hiển thị biểu đồ.
             </div>
           ) : (
-            <div className="h-72 min-w-0">
+            <div className="h-96 min-w-0">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="reportBar" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.4} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="name" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis
-                    tick={{ fill: '#6b7280', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(value) => `${Math.round(value / 1000)}k`}
-                  />
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80}
+                    outerRadius={120}
+                    paddingAngle={5}
+                    dataKey="total"
+                    nameKey="name"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
                   <Tooltip
                     contentStyle={{
                       borderRadius: 12,
@@ -598,8 +593,8 @@ const ReportsPage = ({ wallets = [], transactions = [] }) => {
                     labelStyle={{ color: '#111827', fontWeight: 600 }}
                     formatter={(value) => formatCurrency(value)}
                   />
-                  <Bar dataKey="total" fill="url(#reportBar)" radius={[12, 12, 0, 0]} />
-                </BarChart>
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
               </ResponsiveContainer>
             </div>
           )}
@@ -622,7 +617,6 @@ const ReportsPage = ({ wallets = [], transactions = [] }) => {
                 <thead>
                   <tr className="text-xs uppercase tracking-wider text-gray-400">
                     <th className="py-3 pr-4 font-semibold">Nhóm</th>
-                    <th className="py-3 pr-4 font-semibold">Số giao dịch</th>
                     <th className="py-3 pr-4 font-semibold">Tổng tiền</th>
                     <th className="py-3 pr-4 font-semibold">Tỷ trọng</th>
                   </tr>
@@ -634,7 +628,6 @@ const ReportsPage = ({ wallets = [], transactions = [] }) => {
                     return (
                       <tr key={item.value} className={`border-t border-gray-100 ${isActive ? 'bg-indigo-50/40' : ''}`}>
                         <td className="py-3 pr-4 font-medium text-gray-900">{item.label}</td>
-                        <td className="py-3 pr-4 text-gray-600">{item.count}</td>
                         <td className="py-3 pr-4 font-semibold text-gray-900">{formatCurrency(item.total)}</td>
                         <td className="py-3 pr-4 text-gray-600">{share.toFixed(1)}%</td>
                       </tr>

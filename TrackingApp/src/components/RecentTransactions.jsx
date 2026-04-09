@@ -1,6 +1,8 @@
 import React from 'react';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
+const VIETNAM_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+
 const getNormalizedType = (transaction) => String(transaction?.type || '').toUpperCase();
 
 const getCategoryName = (transaction) => {
@@ -10,17 +12,33 @@ const getCategoryName = (transaction) => {
   return transaction?.category?.name || 'Giao dịch';
 };
 
+const formatLocalTime = (dateString) => {
+  if (!dateString) return '';
+  
+  // Force strict ISO UTC format: "2026-04-09 03:07:00" -> "2026-04-09T03:07:00Z"
+  const strictIsoString = dateString.trim().replace(' ', 'T') + 'Z';
+  
+  const date = new Date(strictIsoString);
+  return date.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+};
+
 const formatDateLabel = (createdAt) => {
   if (!createdAt) return '--';
   const normalized = String(createdAt).replace(' ', 'T');
   const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return String(createdAt);
   return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: VIETNAM_TIME_ZONE,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   }).format(date);
 };
 
@@ -61,7 +79,10 @@ const RecentTransactions = ({ transactions }) => {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">{getCategoryName(item)}</p>
-                <p className="text-xs text-gray-500">{item.wallet?.name || formatDateLabel(item.createdAt)}</p>
+                <p className="text-xs text-gray-500">
+                  {item.wallet?.name || formatDateLabel(item.createdAt)}
+                  {item.createdAt ? ` • ${formatLocalTime(item.createdAt)}` : ''}
+                </p>
               </div>
             </div>
             <p

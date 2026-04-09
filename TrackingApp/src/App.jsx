@@ -122,6 +122,7 @@ function App() {
         return (
           <WalletManager
             wallets={wallets}
+            transactions={transactions}
             onAddWallet={handleAddWallet}
             onRefreshWallets={fetchWallets}
           />

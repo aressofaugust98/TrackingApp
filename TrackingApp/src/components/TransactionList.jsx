@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, Edit3, Trash2, Pencil, Camera, CalendarRange, ChevronDown } from 'lucide-react';
+import { Plus, Edit3, Trash2, Pencil, Camera, CalendarRange, ChevronDown, ArrowLeftRight } from 'lucide-react';
 import { CATEGORY_STYLES, CATEGORY_FALLBACK } from '../constants/transactionCategories';
+
+const VIETNAM_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -17,6 +19,46 @@ const getCategoryName = (transaction) => {
   return transaction?.category?.name || 'Danh mục';
 };
 
+const isTransferTransaction = (transaction) => getNormalizedType(transaction) === 'TRANSFER';
+
+const getWalletDisplayName = (wallet, fallback = '') => {
+  if (typeof wallet === 'string') {
+    return wallet.trim() || fallback;
+  }
+
+  if (typeof wallet === 'number') {
+    return String(wallet);
+  }
+
+  return wallet?.name || fallback;
+};
+
+const getTransferTitle = (transaction) => {
+  const sourceWallet =
+    getWalletDisplayName(transaction?.sourceWallet, '') ||
+    getWalletDisplayName(transaction?.wallet, '');
+  const destinationWallet = getWalletDisplayName(transaction?.destinationWallet, '');
+
+  if (sourceWallet && destinationWallet) {
+    return `${sourceWallet} ➔ ${destinationWallet}`;
+  }
+
+  return 'Chuyển tiền';
+};
+
+const getTransferSubtitle = (transaction) => {
+  const sourceWallet =
+    getWalletDisplayName(transaction?.sourceWallet, '') ||
+    getWalletDisplayName(transaction?.wallet, '');
+  const destinationWallet = getWalletDisplayName(transaction?.destinationWallet, '');
+
+  if (sourceWallet && destinationWallet) {
+    return `Từ ví ${sourceWallet} sang ví ${destinationWallet}`;
+  }
+
+  return 'Transfer';
+};
+
 const getWalletName = (transaction) => {
   const sourceWallet = transaction?.wallet?.name;
   const destinationWallet = transaction?.destinationWallet?.name;
@@ -31,24 +73,30 @@ const getWalletName = (transaction) => {
 const getTransactionDate = (transaction) => {
   const candidate = transaction?.createdAt || transaction?.date || transaction?.dateValue;
   if (!candidate) return null;
-  const normalized = String(candidate).replace(' ', 'T');
+  const normalized = `${String(candidate).trim().replace(' ', 'T')}Z`;
   const date = new Date(normalized);
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
 const getTransactionTimeLabel = (transaction) => {
-  if (transaction?.time) return transaction.time;
-  if (!transaction?.createdAt) return '';
+  const date = getTransactionDate(transaction);
+  if (!date) return transaction?.time || '';
 
-  const parts = String(transaction.createdAt).split(' ');
-  if (parts.length < 2) return '';
-  return parts[1].slice(0, 5);
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: VIETNAM_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
 };
 
 const formatAmount = (transaction) => {
   if (typeof transaction.amount === 'number' && !Number.isNaN(transaction.amount)) {
     const absolute = Math.abs(transaction.amount);
     const formatted = currencyFormatter.format(absolute);
+    if (isTransferTransaction(transaction)) {
+      return formatted;
+    }
     return getNormalizedType(transaction) === 'INCOME' ? `+${formatted}` : `-${formatted}`;
   }
   return transaction.amount || '--';
@@ -69,10 +117,14 @@ const getDateLabel = (transaction) => {
   if (!today || !transactionDate) return 'Earlier';
 
   const diffDays = Math.round((today.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
+  if (diffDays === 0) return 'Hôm nay';
+  if (diffDays === 1) return 'Hôm qua';
 
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(transactionDate);
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: VIETNAM_TIME_ZONE,
+    day: '2-digit',
+    month: '2-digit',
+  }).format(transactionDate);
 };
 
 const getSortTimestamp = (transaction) => {
@@ -318,12 +370,17 @@ const TransactionList = ({
               <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-gray-400">{label}</p>
               <div className="overflow-hidden rounded-2xl border border-gray-100 divide-y divide-gray-100">
                 {items.map((transaction) => {
+                  const transferTransaction = isTransferTransaction(transaction);
                   const categoryName = getCategoryName(transaction);
                   const walletName = getWalletName(transaction);
                   const detailLabel = [walletName, transaction.note].filter(Boolean).join(' • ');
                   const meta = CATEGORY_STYLES[categoryName] || CATEGORY_FALLBACK;
-                  const Icon = meta.icon;
-                  const amountColor = getNormalizedType(transaction) === 'INCOME' ? 'text-emerald-600' : 'text-rose-600';
+                  const Icon = transferTransaction ? ArrowLeftRight : meta.icon;
+                  const amountColor = transferTransaction
+                    ? 'text-gray-900'
+                    : getNormalizedType(transaction) === 'INCOME'
+                      ? 'text-emerald-600'
+                      : 'text-rose-600';
                   return (
                     <div
                       key={transaction.id}
@@ -337,8 +394,12 @@ const TransactionList = ({
                           <Icon size={22} />
                         </span>
                         <div className="truncate">
-                          <p className="text-sm font-semibold text-gray-900">{transaction.category?.name || categoryName}</p>
-                          <p className="text-xs text-gray-500 truncate">{detailLabel || 'Không có ghi chú'}</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {transferTransaction ? getTransferTitle(transaction) : transaction.category?.name || categoryName}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {transferTransaction ? getTransferSubtitle(transaction) : detailLabel || 'Không có ghi chú'}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-center">
@@ -376,7 +437,7 @@ const TransactionList = ({
         </div>
       </div>
 
-      <div className="fixed bottom-24 right-4 md:bottom-28 md:right-10 z-40 flex flex-col items-end gap-3">
+      <div className="fixed z-40 bottom-40 right-4 md:bottom-26 md:right-10 flex flex-col items-end gap-3">
         <div
           className={`flex flex-col items-end gap-2 transition-all duration-300 ease-out ${
             isSpeedDialOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none'

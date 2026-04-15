@@ -3,9 +3,11 @@ import './App.css'
 import AppLayout from './components/AppLayout'
 import WalletManager from './components/WalletManager'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
 import TransactionsPage from './pages/TransactionsPage'
 import ReportsPage from './pages/ReportsPage'
+import OnboardingPage from './pages/OnboardingPage'
 import { getTransactions } from './services/transactionService'
 import { getAllWallets } from './services/walletService'
 
@@ -13,9 +15,11 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     () => !!localStorage.getItem('accessToken')
   )
+  const [authPage, setAuthPage] = useState('login')
   const [appSection, setAppSection] = useState('dashboard')
   const [wallets, setWallets] = useState([])
   const [transactions, setTransactions] = useState([])
+  const [isLoadingWallets, setIsLoadingWallets] = useState(true)
 
   const formatDate = (date) => {
     const year = date.getFullYear()
@@ -26,6 +30,7 @@ function App() {
 
   const fetchWallets = async () => {
     try {
+      setIsLoadingWallets(true)
       const data = await getAllWallets()
       setWallets(data)
     } catch (error) {
@@ -33,6 +38,8 @@ function App() {
       if ((error?.message || '').toLowerCase().includes('unauthorized')) {
         setIsAuthenticated(false)
       }
+    } finally {
+      setIsLoadingWallets(false)
     }
   }
 
@@ -63,9 +70,23 @@ function App() {
     fetchTransactions()
   }, [isAuthenticated])
 
+  useEffect(() => {
+    if (isAuthenticated && !isLoadingWallets) {
+      if (wallets.length === 0 && appSection !== 'onboarding') {
+        setAppSection('onboarding')
+      } else if (wallets.length > 0 && appSection === 'onboarding') {
+        setAppSection('dashboard')
+      }
+    }
+  }, [isAuthenticated, isLoadingWallets, wallets.length, appSection])
+
   const handleLoginSuccess = () => {
     setAppSection('dashboard')
     setIsAuthenticated(true)
+  }
+
+  const handleRegisterSuccess = () => {
+    setAuthPage('login')
   }
 
   const handleAddWallet = ({ name, initialBalance }) => {
@@ -90,18 +111,38 @@ function App() {
   }
 
   if (!isAuthenticated) {
+    if (authPage === 'register') {
+      return (
+        <RegisterPage
+          onRegister={handleRegisterSuccess}
+          onLogin={() => setAuthPage('login')}
+          onForgot={() => alert('Tính năng quên mật khẩu sẽ được bổ sung sau.')}
+        />
+      )
+    }
+
     return (
       <LoginPage
         onLoginSuccess={() => setIsAuthenticated(true)}
         onSignIn={handleLoginSuccess}
-        onRegister={() => alert('Tính năng đăng ký sẽ được bổ sung sau.')}
+        onRegister={() => setAuthPage('register')}
         onForgot={() => alert('Tính năng quên mật khẩu sẽ được bổ sung sau.')}
       />
     )
   }
 
   const renderSection = () => {
+    if (isLoadingWallets) {
+      return (
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
+      )
+    }
+
     switch (appSection) {
+      case 'onboarding':
+        return <OnboardingPage onComplete={fetchWallets} />
       case 'transactions':
         return (
           <TransactionsPage

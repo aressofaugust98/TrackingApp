@@ -121,14 +121,14 @@ const LoginPage = ({ onRegister, onForgot, onSignIn, onLoginSuccess }) => {
             <button
               type="button"
               onClick={onRegister}
-              className="text-indigo-600 hover:text-indigo-700 font-medium"
+              className="text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer"
             >
               Đăng ký
             </button>
             <button
               type="button"
               onClick={onForgot}
-              className="text-gray-600 hover:text-indigo-600"
+              className="text-gray-600 hover:text-indigo-600 cursor-pointer"
             >
               Quên mật khẩu?
             </button>

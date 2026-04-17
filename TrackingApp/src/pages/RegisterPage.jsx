@@ -152,16 +152,9 @@ const RegisterPage = ({ onLogin, onForgot, onRegister }) => {
             <button
               type="button"
               onClick={onLogin}
-              className="text-indigo-600 hover:text-indigo-700 font-medium"
+              className="text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer"
             >
               Đã có tài khoản? Đăng nhập
-            </button>
-            <button
-              type="button"
-              onClick={onForgot}
-              className="text-gray-600 hover:text-indigo-600"
-            >
-              Quên mật khẩu?
             </button>
           </div>
         </form>

@@ -6,6 +6,8 @@ import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
 import TransactionsPage from './pages/TransactionsPage'
 import ReportsPage from './pages/ReportsPage'
+import BudgetPage from './pages/BudgetPage'
+import RegisterPage from './pages/RegisterPage'
 import { getTransactions } from './services/transactionService'
 import { getAllWallets } from './services/walletService'
 
@@ -13,6 +15,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     () => !!localStorage.getItem('accessToken')
   )
+  const [authView, setAuthView] = useState('login')
   const [appSection, setAppSection] = useState('dashboard')
   const [wallets, setWallets] = useState([])
   const [transactions, setTransactions] = useState([])
@@ -65,6 +68,7 @@ function App() {
 
   const handleLoginSuccess = () => {
     setAppSection('dashboard')
+    setAuthView('login')
     setIsAuthenticated(true)
   }
 
@@ -90,11 +94,24 @@ function App() {
   }
 
   if (!isAuthenticated) {
+    if (authView === 'register') {
+      return (
+        <RegisterPage
+          onLogin={() => setAuthView('login')}
+          onForgot={() => alert('Tính năng quên mật khẩu sẽ được bổ sung sau.')}
+          onRegister={() => {
+            alert('Đăng ký thành công! Vui lòng đăng nhập.')
+            setAuthView('login')
+          }}
+        />
+      )
+    }
+
     return (
       <LoginPage
         onLoginSuccess={() => setIsAuthenticated(true)}
         onSignIn={handleLoginSuccess}
-        onRegister={() => alert('Tính năng đăng ký sẽ được bổ sung sau.')}
+        onRegister={() => setAuthView('register')}
         onForgot={() => alert('Tính năng quên mật khẩu sẽ được bổ sung sau.')}
       />
     )
@@ -112,6 +129,8 @@ function App() {
         )
       case 'reports':
         return <ReportsPage wallets={wallets} transactions={transactions} />
+      case 'budget':
+        return <BudgetPage />
       case 'wallets':
         return (
           <WalletManager
@@ -144,7 +163,10 @@ function App() {
     <AppLayout
       activeLink={appSection}
       onNavigate={handleNavigate}
-      onLogoutSuccess={() => setIsAuthenticated(false)}
+      onLogoutSuccess={() => {
+        setAuthView('login')
+        setIsAuthenticated(false)
+      }}
     >
       {renderSection()}
     </AppLayout>

@@ -1,4 +1,4 @@
-const AI_BASE_URL = 'https://examining-camcorder-extract-file.trycloudflare.com';
+const AI_BASE_URL = import.meta.env.DEV ? '/ai-api' : 'https://all-lifestyle-invitation-phrases.trycloudflare.com';
 const CHAT_API_URL = `${AI_BASE_URL}/chat`;
 
 const getAuthHeaders = () => {

@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react-swc'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiTarget = env.VITE_API_BASE_URL || 'https://monio-docker-image.onrender.com'
-  const ocrTarget = env.VITE_OCR_PROXY_TARGET || 'https://purpose-floating-tax-replacing.trycloudflare.com'
+  const aiTarget = env.VITE_AI_PROXY_TARGET || 'https://all-lifestyle-invitation-phrases.trycloudflare.com'
 
   return {
     plugins: [react()],
@@ -22,11 +22,11 @@ export default defineConfig(({ mode }) => {
           secure: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
-        '/ocr-api': {
-          target: ocrTarget,
+        '/ai-api': {
+          target: aiTarget,
           changeOrigin: true,
           secure: true,
-          rewrite: (path) => path.replace(/^\/ocr-api/, ''),
+          rewrite: (path) => path.replace(/^\/ai-api/, ''),
         },
       },
     },

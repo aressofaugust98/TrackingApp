@@ -1,4 +1,5 @@
-const AI_BASE_URL = 'https://examining-camcorder-extract-file.trycloudflare.com';
+const RAW_AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || '';
+const AI_BASE_URL = String(RAW_AI_BASE_URL).replace(/\/+$/, '');
 const CHAT_API_URL = `${AI_BASE_URL}/chat`;
 
 const getAuthHeaders = () => {

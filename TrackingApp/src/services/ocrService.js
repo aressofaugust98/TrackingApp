@@ -1,4 +1,4 @@
-const FALLBACK_OCR_URL = 'https://purpose-floating-tax-replacing.trycloudflare.com/extract';
+const FALLBACK_OCR_URL = 'https://parent-engines-compressed-proceed.trycloudflare.com/ocr';
 
 const resolveOcrApiUrl = () => {
   const configuredUrl = (import.meta.env.VITE_OCR_API_URL || '').trim();

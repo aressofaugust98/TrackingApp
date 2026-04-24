@@ -1,4 +1,5 @@
-const AI_BASE_URL = import.meta.env.DEV ? '/ai-api' : 'https://all-lifestyle-invitation-phrases.trycloudflare.com';
+const RAW_AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || '';
+const AI_BASE_URL = String(RAW_AI_BASE_URL).replace(/\/+$/, '');
 const CHAT_API_URL = `${AI_BASE_URL}/chat`;
 
 const getAuthHeaders = () => {

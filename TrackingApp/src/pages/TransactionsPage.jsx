@@ -13,7 +13,8 @@ const formatDate = (date) => {
 };
 
 const mapExtractedInvoiceToPrefill = (ocrResponse) => {
-  const extracted = ocrResponse?.bills?.[0] || {};
+  const primaryBill = Array.isArray(ocrResponse?.bills) ? ocrResponse.bills[0] : null;
+  const extracted = primaryBill || ocrResponse?.extracted || {};
   const localDateTime = typeof extracted.LocalDateTime === 'string' ? extracted.LocalDateTime.trim() : '';
   const [datePart = '', timePartRaw = ''] = localDateTime.split(' ');
   const timePart = timePartRaw ? timePartRaw.slice(0, 5) : '';

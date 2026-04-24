@@ -1,18 +1,21 @@
 const FALLBACK_OCR_URL = 'https://parent-engines-compressed-proceed.trycloudflare.com/ocr';
 
+const FALLBACK_OCR_URL = 'https://parent-engines-compressed-proceed.trycloudflare.com/ocr';
+
 const resolveOcrApiUrl = () => {
   const configuredUrl = (import.meta.env.VITE_AI_API_URL || '').trim();
 
   if (!configuredUrl) {
-    return import.meta.env.DEV ? '/ai-api/ocr' : FALLBACK_AI_URL;
+    return import.meta.env.DEV ? '/ai-api/ocr' : FALLBACK_OCR_URL;
   }
 
   if (!import.meta.env.DEV && configuredUrl.startsWith('/')) {
-    return FALLBACK_AI_URL;
+    return FALLBACK_OCR_URL;
   }
 
   return `${configuredUrl}/ocr`;
 };
+// ... các đoạn code bên dưới giữ nguyên
 
 const OCR_API_URL = resolveOcrApiUrl();
 

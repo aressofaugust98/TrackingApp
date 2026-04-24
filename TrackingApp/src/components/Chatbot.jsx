@@ -157,7 +157,7 @@ const Chatbot = () => {
               return (
                 <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+                    className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
                       isUser
                         ? 'rounded-br-sm bg-slate-900 text-white'
                         : 'rounded-bl-sm border border-slate-200 bg-white text-slate-700'

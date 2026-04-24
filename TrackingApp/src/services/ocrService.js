@@ -1,17 +1,17 @@
 const FALLBACK_OCR_URL = 'https://parent-engines-compressed-proceed.trycloudflare.com/ocr';
 
 const resolveOcrApiUrl = () => {
-  const configuredUrl = (import.meta.env.VITE_OCR_API_URL || '').trim();
+  const configuredUrl = (import.meta.env.VITE_AI_API_URL || '').trim();
 
   if (!configuredUrl) {
-    return import.meta.env.DEV ? '/ocr-api/extract' : FALLBACK_OCR_URL;
+    return import.meta.env.DEV ? '/ai-api/ocr' : FALLBACK_AI_URL;
   }
 
   if (!import.meta.env.DEV && configuredUrl.startsWith('/')) {
-    return FALLBACK_OCR_URL;
+    return FALLBACK_AI_URL;
   }
 
-  return configuredUrl;
+  return `${configuredUrl}/ocr`;
 };
 
 const OCR_API_URL = resolveOcrApiUrl();

@@ -17,7 +17,8 @@ import { extractInvoice } from '../services/ocrService';
 import { createTransaction, createTransfer, getTransactions } from '../services/transactionService.js';
 
 const mapExtractedInvoiceToPrefill = (ocrResponse) => {
-  const extracted = ocrResponse?.extracted || {};
+  const primaryBill = Array.isArray(ocrResponse?.bills) ? ocrResponse.bills[0] : null;
+  const extracted = primaryBill || ocrResponse?.extracted || {};
   const localDateTime = typeof extracted.LocalDateTime === 'string' ? extracted.LocalDateTime.trim() : '';
   const [datePart = '', timePartRaw = ''] = localDateTime.split(' ');
   const timePart = timePartRaw ? timePartRaw.slice(0, 5) : '';
@@ -27,7 +28,8 @@ const mapExtractedInvoiceToPrefill = (ocrResponse) => {
     date: datePart,
     time: timePart,
     type: 'expense',
-    note: `Quét tự động - ${extracted.Category || ''}`.trim(),
+    categoryName: extracted.Category || '',
+    note: 'Quét tự động',
   };
 };
 
@@ -181,8 +183,9 @@ const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) =>
   const handleSubmitTransaction = async (data) => {
     try {
       const createdAt = new Date(`${data.date}T${data.time || '00:00'}:00`).toISOString();
+      const normalizedType = String(data.type || '').trim().toUpperCase();
 
-      if (data.type === 'transfer') {
+      if (normalizedType === 'TRANSFER') {
         await createTransfer({
           amount: Number(data.amount),
           note: data.note,
@@ -194,10 +197,10 @@ const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) =>
         await createTransaction({
           amount: Number(data.amount),
           note: data.note,
-          type: data.type.toUpperCase(),
+          type: normalizedType,
           createdAt,
-          categoryId: Number(data.category),
-          walletId: Number(data.wallet),
+          categoryId: data.categoryId == null ? null : Number(data.categoryId),
+          walletId: data.walletId == null ? null : Number(data.walletId),
         });
       }
 

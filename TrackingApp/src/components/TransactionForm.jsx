@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { getCategoriesByType } from '../services/categoryService';
 
@@ -72,6 +72,7 @@ const TransactionForm = ({
   const [values, setValues] = useState(createDefaultValues());
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState('');
+  const autoCategoryAppliedRef = useRef(false);
   const type = values.type;
   const isTransferWithSameWallets =
     values.type === 'transfer' &&
@@ -83,6 +84,7 @@ const TransactionForm = ({
     if (!open) return;
     setValues(buildInitialValues(initialData));
     setError('');
+    autoCategoryAppliedRef.current = false;
   }, [open, initialData]);
 
   useEffect(() => {
@@ -99,7 +101,42 @@ const TransactionForm = ({
       category: aiValues.category,
     }));
     setError('');
+    autoCategoryAppliedRef.current = false;
   }, [open, prefilledData]);
+
+  const normalizeCategoryMatchValue = (value) => {
+    if (!value) return '';
+    return String(value)
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
+  useEffect(() => {
+    if (!open || !prefilledData || autoCategoryAppliedRef.current) return;
+
+    const targetCategory = prefilledData.categoryName || prefilledData.category;
+    if (!targetCategory || categories.length === 0) return;
+    if (values.category) {
+      autoCategoryAppliedRef.current = true;
+      return;
+    }
+
+    const normalizedTarget = normalizeCategoryMatchValue(targetCategory);
+    const matched = categories.find(
+      (category) => normalizeCategoryMatchValue(category?.name) === normalizedTarget
+    );
+
+    if (matched?.id != null) {
+      setValues((prev) => ({
+        ...prev,
+        category: String(matched.id),
+      }));
+    }
+
+    autoCategoryAppliedRef.current = true;
+  }, [open, prefilledData, categories, values.category]);
 
   useEffect(() => {
     const fetchCategories = async () => {

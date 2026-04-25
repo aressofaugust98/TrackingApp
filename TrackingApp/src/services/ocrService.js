@@ -17,9 +17,21 @@ const resolveOcrApiUrl = () => {
 
 const OCR_API_URL = resolveOcrApiUrl();
 
+const ensureNamedImageFile = (imageFile) => {
+  if (imageFile instanceof File) {
+    return imageFile;
+  }
+
+  const fallbackName = `receipt-${Date.now()}.jpg`;
+  return new File([imageFile], fallbackName, {
+    type: imageFile?.type || 'image/jpeg',
+  });
+};
+
 export const extractInvoice = async (imageFile) => {
   const formData = new FormData();
-  formData.append('file', imageFile);
+  const normalizedFile = ensureNamedImageFile(imageFile);
+  formData.append('file', normalizedFile, normalizedFile.name);
 
   const response = await fetch(OCR_API_URL, {
     method: 'POST',

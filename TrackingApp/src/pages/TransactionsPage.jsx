@@ -24,7 +24,8 @@ const mapExtractedInvoiceToPrefill = (ocrResponse) => {
     date: datePart,
     time: timePart,
     type: 'expense',
-    note: `Quét tự động - ${extracted.Category || ''}`.trim(),
+    categoryName: extracted.Category || '',
+    note: 'Quét tự động',
   };
 };
 

@@ -1,4 +1,4 @@
-const FALLBACK_OCR_URL = 'https://optimal-function-feedback-carrier.trycloudflare.com/ocr';
+const FALLBACK_OCR_URL = 'https://totals-forests-washing-partly.trycloudflare.com/ocr';
 
 const resolveOcrApiUrl = () => {
   const configuredUrl = (import.meta.env.VITE_AI_API_URL || '').trim();

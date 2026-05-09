@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   ArrowRightLeft,
   Wallet,
-  PiggyBank,
   BarChart3,
   Settings,
   LogOut as LogOutIcon,
@@ -26,7 +25,6 @@ const AppLayout = ({
   const menuItems = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'transactions', label: 'Giao dịch', icon: ArrowRightLeft },
-    { id: 'budget', label: 'Ngân sách', icon: PiggyBank },
     { id: 'reports', label: 'Báo cáo', icon: BarChart3 },
     { id: 'wallets', label: 'Ví tiền', icon: Wallet },
     { id: 'settings', label: 'Cài đặt', icon: Settings },

@@ -90,12 +90,12 @@ const getLastSevenDaysChartData = (transactions = []) => {
   return Array.from(buckets.values());
 };
 
-const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) => {
+const Dashboard = ({ wallets = [], transactions: transactionsProp = [], onRefreshTransactions, onRefreshWallets }) => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [prefilledData, setPrefilledData] = useState(null);
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState(transactionsProp);
 
   const summary = useMemo(() => {
     return transactions.reduce(
@@ -145,6 +145,10 @@ const Dashboard = ({ wallets = [], onRefreshTransactions, onRefreshWallets }) =>
       await onRefreshWallets();
     }
   };
+
+  useEffect(() => {
+    setTransactions(transactionsProp);
+  }, [transactionsProp]);
 
   useEffect(() => {
     fetchTransactions();

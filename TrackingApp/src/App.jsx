@@ -174,6 +174,7 @@ function App() {
         return (
           <Dashboard
             wallets={wallets}
+            transactions={transactions}
             onRefreshTransactions={fetchTransactions}
             onRefreshWallets={fetchWallets}
           />
@@ -186,6 +187,7 @@ function App() {
       activeLink={appSection}
       onNavigate={handleNavigate}
       onLogoutSuccess={() => setIsAuthenticated(false)}
+      onRefreshTransactions={fetchTransactions}
     >
       {renderSection()}
     </AppLayout>

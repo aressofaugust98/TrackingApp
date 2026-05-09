@@ -8,7 +8,6 @@ import Dashboard from './pages/Dashboard'
 import TransactionsPage from './pages/TransactionsPage'
 import ReportsPage from './pages/ReportsPage'
 import OnboardingPage from './pages/OnboardingPage'
-import BudgetPage from './pages/BudgetPage'
 import { getTransactions } from './services/transactionService'
 import { getAllWallets } from './services/walletService'
 
@@ -154,8 +153,6 @@ function App() {
         )
       case 'reports':
         return <ReportsPage wallets={wallets} transactions={transactions} />
-      case 'budget':
-        return <BudgetPage />
       case 'wallets':
         return (
           <WalletManager

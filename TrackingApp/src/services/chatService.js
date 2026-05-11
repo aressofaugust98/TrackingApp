@@ -1,4 +1,4 @@
-const FALLBACK_AI_URL = 'https://totals-forests-washing-partly.trycloudflare.com';
+const FALLBACK_AI_URL = 'https://syndication-veteran-imports-reserve.trycloudflare.com';
 const RAW_AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || FALLBACK_AI_URL;
 const AI_BASE_URL = String(RAW_AI_BASE_URL).replace(/\/+$/, '');
 const CHAT_API_URL = `${AI_BASE_URL}/chat`;

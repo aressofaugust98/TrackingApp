@@ -1,4 +1,4 @@
-const FALLBACK_OCR_URL = 'https://syndication-veteran-imports-reserve.trycloudflare.com/ocr';
+const FALLBACK_OCR_URL = 'https://soccer-influenced-quit-scan.trycloudflare.com/ocr';
 
 const resolveOcrApiUrl = () => {
   const configuredUrl = (import.meta.env.VITE_AI_API_URL || '').trim();
